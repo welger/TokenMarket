@@ -1,0 +1,18 @@
+import 'reflect-metadata';
+
+import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
+
+import { AppModule } from './app.module.js';
+import type { EnvironmentVariables } from './common/config/env.schema.js';
+
+async function bootstrap(): Promise<void> {
+  const app = await NestFactory.create(AppModule);
+  const configService =
+    app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
+
+  app.enableShutdownHooks();
+  await app.listen(configService.get('PORT', { infer: true }), '0.0.0.0');
+}
+
+void bootstrap();
