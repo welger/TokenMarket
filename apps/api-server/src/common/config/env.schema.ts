@@ -21,11 +21,15 @@ const envSchema = Joi.object<EnvironmentVariables>({
     .valid('development', 'test', 'production')
     .default('development'),
   PORT: Joi.number().integer().min(1).max(65535).default(3000),
-  DATABASE_URL: Joi.string().uri().required(),
-  REDIS_URL: Joi.string().uri().required(),
-  JWT_ACCESS_SECRET: Joi.string().min(32).required(),
-  API_KEY_PEPPER: Joi.string().min(32).required(),
-  UPSTREAM_BASE_URL: Joi.string().uri().required(),
+  DATABASE_URL: Joi.string()
+    .uri({ scheme: ['postgresql', 'postgres'] })
+    .required(),
+  REDIS_URL: Joi.string().uri({ scheme: ['redis', 'rediss'] }).required(),
+  JWT_ACCESS_SECRET: Joi.string().trim().min(32).required(),
+  API_KEY_PEPPER: Joi.string().trim().min(32).required(),
+  UPSTREAM_BASE_URL: Joi.string()
+    .uri({ scheme: ['http', 'https'] })
+    .required(),
   UPSTREAM_API_KEY: Joi.string().optional(),
   UPSTREAM_DEFAULT_MODEL: Joi.string().min(1).default('test-model'),
   PAYMENT_DRIVER: Joi.string()
@@ -42,7 +46,9 @@ export function validateEnv(
   });
 
   if (error) {
-    const fields = error.details.map((detail) => detail.path.join('.')).join(', ');
+    const fields = [
+      ...new Set(error.details.map((detail) => detail.path.join('.'))),
+    ].join(', ');
     throw new Error(`Invalid environment configuration: ${fields}`);
   }
 

@@ -72,6 +72,12 @@ enum UsageLedgerType {
   REFUND
 }
 
+enum FulfillmentType {
+  PURCHASE
+  ADMIN_GRANT
+  REFUND_RESTORE
+}
+
 enum OrderStatus {
   PENDING_PAYMENT
   PAID
@@ -96,10 +102,10 @@ model User {
   deletedAt         DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
-  apiKeys           ApiKey[]
-  userPlans         UserPlan[]
-  usageLedgers      UsageLedger[]
-  apiCalls          ApiCall[]
+  apiKeys           ApiKey[]      @relation("UserApiKeys")
+  userPlans         UserPlan[]    @relation("UserPlans")
+  usageLedgers      UsageLedger[] @relation("UserUsageLedgers")
+  apiCalls          ApiCall[]     @relation("UserApiCalls")
   orders            Order[]
 
   @@index([status, createdAt])
@@ -116,9 +122,10 @@ model ApiKey {
   status     ApiKeyStatus @default(ACTIVE)
   createdAt  DateTime     @default(now())
   disabledAt DateTime?
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apiCalls   ApiCall[]
+  user       User         @relation("UserApiKeys", fields: [userId], references: [id], onDelete: Restrict)
+  apiCalls   ApiCall[]    @relation("ApiCallApiKeyOwner")
 
+  @@unique([id, userId])
   @@index([userId, status])
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -180,6 +187,7 @@ model Model {
   apiCalls         ApiCall[]
   usageLedgers     UsageLedger[]
 
+  @@unique([id, providerId])
   @@unique([providerId, upstreamModel])
   @@index([providerId, status, routingPriority])
   @@index([status, updatedAt])
@@ -210,11 +218,12 @@ model Plan {
 }
 
 model UserPlan {
-  id                    String         @id @default(cuid())
+  id                    String          @id @default(cuid())
   userId                String
   planId                String
-  orderId               String?        @unique
-  status                UserPlanStatus @default(PENDING)
+  orderId               String?
+  fulfillmentType       FulfillmentType
+  status                UserPlanStatus  @default(PENDING)
   initialInputQuota     BigInt?
   remainingInputQuota   BigInt?
   initialOutputQuota    BigInt?
@@ -223,14 +232,16 @@ model UserPlan {
   remainingUnifiedQuota BigInt?
   activatedAt           DateTime?
   expiresAt             DateTime?
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
-  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan                  Plan           @relation(fields: [planId], references: [id])
-  order                 Order?         @relation(fields: [orderId], references: [id])
-  usageLedgers          UsageLedger[]
-  apiCalls              ApiCall[]
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  user                  User            @relation("UserPlans", fields: [userId], references: [id], onDelete: Restrict)
+  plan                  Plan            @relation(fields: [planId], references: [id], onDelete: Restrict)
+  order                 Order?          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  usageLedgers          UsageLedger[]   @relation("UsageLedgerUserPlanOwner")
+  apiCalls              ApiCall[]       @relation("ApiCallUserPlanOwner")
 
+  @@unique([id, userId])
+  @@unique([orderId, fulfillmentType])
   @@index([userId, status, expiresAt])
   @@index([planId, status])
   @@index([status, expiresAt])
@@ -241,7 +252,7 @@ model UsageLedger {
   userId           String
   userPlanId       String
   modelId          String?
-  apiCallId        String?         @unique
+  apiCallId        String?
   type             UsageLedgerType
   inputUnits       BigInt          @default(0)
   outputUnits      BigInt          @default(0)
@@ -251,11 +262,12 @@ model UsageLedger {
   remainingUnified BigInt?
   description      String?
   createdAt        DateTime        @default(now())
-  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userPlan         UserPlan        @relation(fields: [userPlanId], references: [id])
+  user             User            @relation("UserUsageLedgers", fields: [userId], references: [id], onDelete: Restrict)
+  userPlan         UserPlan        @relation("UsageLedgerUserPlanOwner", fields: [userPlanId, userId], references: [id, userId], onDelete: Restrict, map: "UsageLedger_userPlan_owner_fkey")
   model            Model?          @relation(fields: [modelId], references: [id])
-  apiCall          ApiCall?        @relation(fields: [apiCallId], references: [id])
+  apiCall          ApiCall?        @relation("UsageLedgerApiCallOwner", fields: [apiCallId, userId], references: [id, userId], onDelete: Restrict, map: "UsageLedger_apiCall_owner_fkey")
 
+  @@unique([apiCallId, userId])
   @@index([userId, createdAt])
   @@index([userPlanId, createdAt])
   @@index([type, createdAt])
@@ -280,12 +292,13 @@ model ApiCall {
   errorSummary       String?      @db.VarChar(500)
   ipHash             String?
   createdAt          DateTime     @default(now())
-  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apiKey             ApiKey       @relation(fields: [apiKeyId], references: [id])
+  user               User         @relation("UserApiCalls", fields: [userId], references: [id], onDelete: Restrict)
+  apiKey             ApiKey       @relation("ApiCallApiKeyOwner", fields: [apiKeyId, userId], references: [id, userId], onDelete: Restrict, map: "ApiCall_apiKey_owner_fkey")
   model              Model        @relation(fields: [modelId], references: [id])
-  userPlan           UserPlan?    @relation(fields: [userPlanId], references: [id])
-  usageLedger        UsageLedger?
+  userPlan           UserPlan?    @relation("ApiCallUserPlanOwner", fields: [userPlanId, userId], references: [id, userId], onDelete: Restrict, map: "ApiCall_userPlan_owner_fkey")
+  usageLedger        UsageLedger? @relation("UsageLedgerApiCallOwner")
 
+  @@unique([id, userId])
   @@index([userId, createdAt])
   @@index([apiKeyId, createdAt])
   @@index([modelId, createdAt])
@@ -309,9 +322,9 @@ model Order {
   cancelledAt      DateTime?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
-  user             User          @relation(fields: [userId], references: [id])
-  plan             Plan          @relation(fields: [planId], references: [id])
-  userPlan         UserPlan?
+  user             User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  plan             Plan          @relation(fields: [planId], references: [id], onDelete: Restrict)
+  userPlans        UserPlan[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
