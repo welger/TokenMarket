@@ -5,17 +5,16 @@ import {
   Controller,
   Get,
   INestApplication,
+  Param,
   Post,
   Req,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { hash, argon2id } from 'argon2';
 import request from 'supertest';
 
-import { AuditedAction } from '../src/audit/audited-action.decorator.js';
-import { AuditInterceptor } from '../src/audit/audit.interceptor.js';
+import { AuditService } from '../src/audit/audit.service.js';
 import { AdminJwtGuard } from '../src/auth/admin-jwt.guard.js';
 import { Roles } from '../src/auth/roles.decorator.js';
 import { RolesGuard } from '../src/auth/roles.guard.js';
@@ -23,6 +22,8 @@ import { PrismaService } from '../src/common/prisma/prisma.service.js';
 import {
   AdminRole,
   AdminUserStatus,
+  PlanActivationMode,
+  PlanStatus,
 } from '../src/generated/prisma/client.js';
 
 type AuthenticatedRequest = {
@@ -42,35 +43,91 @@ class ModelsProbeController {
 @Controller('admin/plans')
 @UseGuards(AdminJwtGuard, RolesGuard)
 class PlansProbeController {
+  constructor(private readonly auditService: AuditService) {}
+
   @Post()
   @Roles(AdminRole.OWNER, AdminRole.OPERATOR)
-  @UseInterceptors(AuditInterceptor)
-  @AuditedAction({
-    action: 'PLAN_PRICE_CHANGED',
-    resourceType: 'plan',
-    resourceId: ({ request: httpRequest }) =>
-      String(httpRequest.body?.planId),
-    beforeSummary: ({ request: httpRequest }) =>
-      httpRequest.body?.beforeSummary,
-    afterSummary: ({ result }) => result,
-  })
-  changePrice(
+  async changePrice(
     @Body()
     body: {
       planId: string;
       priceMinor: number;
       password?: string;
       apiKey?: string;
+      beforeSummary?: Record<string, unknown>;
     },
     @Req() httpRequest: AuthenticatedRequest,
-  ): Record<string, unknown> {
-    return {
-      planId: body.planId,
-      priceMinor: body.priceMinor,
+  ): Promise<Record<string, unknown>> {
+    return this.auditService.executeAuditedMutation(
+      async (transaction) => {
+        const before = await transaction.plan.findUniqueOrThrow({
+          where: { id: body.planId },
+        });
+        const updated = await transaction.plan.update({
+          where: { id: body.planId },
+          data: { priceMinor: body.priceMinor },
+        });
+
+        return { before, updated };
+      },
+      ({ before, updated }) => ({
+        adminUserId: httpRequest.user.sub,
+        action: 'PLAN_PRICE_CHANGED',
+        resourceType: 'plan',
+        resourceId: body.planId,
+        requestId: getHeader(httpRequest, 'x-request-id'),
+        beforeSummary: {
+          priceMinor: before.priceMinor,
+          clientSummary: body.beforeSummary,
+          password: body.password,
+          apiKey: body.apiKey,
+        },
+        afterSummary: {
+          priceMinor: updated.priceMinor,
+          token: 'must-not-be-stored',
+        },
+        ip: getHeader(httpRequest, 'x-forwarded-for'),
+      }),
+    ).then(({ updated }) => ({
+      planId: updated.id,
+      priceMinor: updated.priceMinor,
       changedBy: httpRequest.user.sub,
-      token: 'must-not-be-stored',
-    };
+    }));
   }
+
+  @Post(':planId/fail-audit')
+  @Roles(AdminRole.OWNER, AdminRole.OPERATOR)
+  async failAudit(
+    @Param('planId') planId: string,
+    @Body() body: { priceMinor: number },
+    @Req() httpRequest: AuthenticatedRequest,
+  ): Promise<unknown> {
+    return this.auditService.executeAuditedMutation(
+      (transaction) =>
+        transaction.plan.update({
+          where: { id: planId },
+          data: { priceMinor: body.priceMinor },
+        }),
+      (updated) => ({
+        adminUserId: `missing-${httpRequest.user.sub}`,
+        action: 'PLAN_PRICE_CHANGED',
+        resourceType: 'plan',
+        resourceId: planId,
+        requestId: `failed-${planId}`,
+        afterSummary: { priceMinor: updated.priceMinor },
+      }),
+    );
+  }
+}
+
+function getHeader(
+  request: AuthenticatedRequest & {
+    headers?: Record<string, string | string[] | undefined>;
+  },
+  name: string,
+): string | undefined {
+  const value = request.headers?.[name];
+  return Array.isArray(value) ? value[0] : value;
 }
 
 describe('admin authentication, RBAC and audit (e2e)', () => {
@@ -84,6 +141,7 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
   );
   const disabledUsername = `task4-disabled-${runId}`;
   const createdAdminIds: string[] = [];
+  let planId: string;
 
   async function loginAs(
     username: string,
@@ -113,7 +171,7 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
       controllers: [ModelsProbeController, PlansProbeController],
     }).compile();
 
-    app = testingModule.createNestApplication();
+    app = testingModule.createNestApplication({ logger: false });
     await app.init();
     prisma = app.get(PrismaService);
 
@@ -141,6 +199,22 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
       },
     });
     createdAdminIds.push(disabledAdmin.id);
+
+    const plan = await prisma.plan.create({
+      data: {
+        name: `Task 4 plan ${runId}`,
+        description: 'Local e2e test only',
+        priceMinor: 100,
+        currency: 'CNY',
+        unifiedQuota: 1000,
+        activationMode: PlanActivationMode.IMMEDIATE,
+        validityDays: 30,
+        refundPolicy: 'Local test only',
+        purchaseNotice: 'Local test only',
+        status: PlanStatus.DRAFT,
+      },
+    });
+    planId = plan.id;
   });
 
   afterAll(async () => {
@@ -148,6 +222,12 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
       await prisma.auditLog.deleteMany({
         where: { adminUserId: { in: createdAdminIds } },
       });
+      if (planId) {
+        await prisma.auditLog.deleteMany({
+          where: { resourceType: 'plan', resourceId: planId },
+        });
+        await prisma.plan.delete({ where: { id: planId } });
+      }
       await prisma.adminUser.deleteMany({
         where: { id: { in: createdAdminIds } },
       });
@@ -168,7 +248,7 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
     await request(app.getHttpServer())
       .post('/admin/plans')
       .set('Authorization', `Bearer ${login.body.accessToken}`)
-      .send({ planId: 'plan_support', priceMinor: 200 })
+      .send({ planId, priceMinor: 200 })
       .expect(403);
 
     await expect(
@@ -176,6 +256,9 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
         where: { adminUserId: createdAdminIds[2] },
       }),
     ).resolves.toBe(beforeCount);
+    await expect(
+      prisma.plan.findUniqueOrThrow({ where: { id: planId } }),
+    ).resolves.toMatchObject({ priceMinor: 100 });
   });
 
   it.each([AdminRole.OWNER, AdminRole.OPERATOR])(
@@ -250,7 +333,7 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
       .set('X-Request-Id', requestId)
       .set('X-Forwarded-For', plainIp)
       .send({
-        planId: `plan-${runId}`,
+        planId,
         priceMinor: 200,
         password: 'request-password',
         apiKey: 'request-api-key',
@@ -274,14 +357,37 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
       adminUserId: createdAdminIds[0],
       action: 'PLAN_PRICE_CHANGED',
       resourceType: 'plan',
-      resourceId: `plan-${runId}`,
+      resourceId: planId,
       requestId,
     });
+    await expect(
+      prisma.plan.findUniqueOrThrow({ where: { id: planId } }),
+    ).resolves.toMatchObject({ priceMinor: 200 });
     expect(audit.ipHash).toMatch(/^[a-f0-9]{64}$/);
     expect(serialized).not.toContain(plainIp);
     expect(serialized).not.toContain('request-password');
     expect(serialized).not.toContain('request-api-key');
     expect(serialized).not.toContain('before-secret');
     expect(serialized).not.toContain('must-not-be-stored');
+  });
+
+  it('rolls back the price change when the audit insert fails', async () => {
+    const login = await loginAs(usernames[0]!);
+    const priceBeforeRequest = (
+      await prisma.plan.findUniqueOrThrow({ where: { id: planId } })
+    ).priceMinor;
+
+    await request(app.getHttpServer())
+      .post(`/admin/plans/${planId}/fail-audit`)
+      .set('Authorization', `Bearer ${login.body.accessToken}`)
+      .send({ priceMinor: 999 })
+      .expect(500);
+
+    await expect(
+      prisma.plan.findUniqueOrThrow({ where: { id: planId } }),
+    ).resolves.toMatchObject({ priceMinor: priceBeforeRequest });
+    await expect(
+      prisma.auditLog.count({ where: { requestId: `failed-${planId}` } }),
+    ).resolves.toBe(0);
   });
 });

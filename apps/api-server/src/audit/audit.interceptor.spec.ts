@@ -11,7 +11,7 @@ import { AuditInterceptor } from './audit.interceptor.js';
 import type { AuditService } from './audit.service.js';
 
 describe('AuditInterceptor', () => {
-  it('fails the request when the audit write fails', async () => {
+  it('propagates an observation audit failure after a handler completes', async () => {
     const handler = () => undefined;
     Reflect.defineMetadata(
       AUDITED_ACTION_METADATA,

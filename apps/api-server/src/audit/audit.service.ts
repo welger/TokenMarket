@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 
 import type { EnvironmentVariables } from '../common/config/env.schema.js';
 import { PrismaService } from '../common/prisma/prisma.service.js';
-import { Prisma } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
 
 const MAX_SUMMARY_DEPTH = 12;
 
@@ -20,6 +20,10 @@ export interface AuditRecordInput {
   ip?: string;
 }
 
+export type AuditInputFactory<TResult> = (
+  result: TResult,
+) => AuditRecordInput;
+
 @Injectable()
 export class AuditService {
   private readonly ipHashKey: string;
@@ -31,25 +35,61 @@ export class AuditService {
     this.ipHashKey = configService.get('API_KEY_PEPPER', { infer: true });
   }
 
+  /**
+   * Writes an audit observation without a business mutation transaction.
+   * Sensitive writes must use executeAuditedMutation.
+   */
   async record(input: AuditRecordInput): Promise<void> {
     await this.prisma.auditLog.create({
-      data: {
-        adminUserId: input.adminUserId,
-        action: input.action,
-        resourceType: input.resourceType,
-        resourceId: input.resourceId,
-        requestId: input.requestId,
-        beforeSummary:
-          input.beforeSummary === undefined
-            ? undefined
-            : (this.sanitize(input.beforeSummary) as Prisma.InputJsonValue),
-        afterSummary:
-          input.afterSummary === undefined
-            ? undefined
-            : (this.sanitize(input.afterSummary) as Prisma.InputJsonValue),
-        ipHash: input.ip ? this.hashIp(input.ip) : undefined,
-      },
+      data: this.buildAuditData(input),
     });
+  }
+
+  /**
+   * Runs a sensitive business mutation and its audit insert in one Prisma
+   * transaction. Any mutation, audit construction, or audit insert failure
+   * rolls back all writes performed through the provided transaction client.
+   */
+  executeAuditedMutation<TResult>(
+    mutation: (transaction: Prisma.TransactionClient) => Promise<TResult>,
+    auditInput:
+      | AuditRecordInput
+      | AuditInputFactory<TResult>,
+  ): Promise<TResult> {
+    return this.prisma.$transaction(async (transaction) => {
+      const result = await mutation(transaction);
+      const input =
+        typeof auditInput === 'function'
+          ? auditInput(result)
+          : auditInput;
+
+      await transaction.auditLog.create({
+        data: this.buildAuditData(input),
+      });
+
+      return result;
+    });
+  }
+
+  private buildAuditData(
+    input: AuditRecordInput,
+  ): Prisma.AuditLogUncheckedCreateInput {
+    return {
+      adminUserId: input.adminUserId,
+      action: input.action,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      requestId: input.requestId,
+      beforeSummary:
+        input.beforeSummary === undefined
+          ? undefined
+          : (this.sanitize(input.beforeSummary) as Prisma.InputJsonValue),
+      afterSummary:
+        input.afterSummary === undefined
+          ? undefined
+          : (this.sanitize(input.afterSummary) as Prisma.InputJsonValue),
+      ipHash: input.ip ? this.hashIp(input.ip) : undefined,
+    };
   }
 
   private hashIp(ip: string): string {

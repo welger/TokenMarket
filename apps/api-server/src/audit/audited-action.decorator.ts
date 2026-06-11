@@ -32,6 +32,11 @@ export interface AuditedActionOptions {
   afterSummary?: AuditValueSelector;
 }
 
+/**
+ * Adds post-handler observation audit metadata. Sensitive database mutations
+ * must use AuditService.executeAuditedMutation so the business write and audit
+ * row share one transaction.
+ */
 export const AuditedAction = (
   options: AuditedActionOptions,
 ): MethodDecorator => SetMetadata(AUDITED_ACTION_METADATA, options);

@@ -26,6 +26,8 @@ export class AuditInterceptor implements NestInterceptor {
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    // This interceptor observes a completed handler. Database mutations that
+    // require atomic audit logging must use AuditService.executeAuditedMutation.
     const options = this.reflector.getAllAndOverride<AuditedActionOptions>(
       AUDITED_ACTION_METADATA,
       [context.getHandler(), context.getClass()],
