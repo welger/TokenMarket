@@ -236,7 +236,7 @@ model UserPlan {
   updatedAt             DateTime        @updatedAt
   user                  User            @relation("UserPlans", fields: [userId], references: [id], onDelete: Restrict)
   plan                  Plan            @relation(fields: [planId], references: [id], onDelete: Restrict)
-  order                 Order?          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  order                 Order?          @relation(fields: [orderId, userId, planId], references: [id, userId, planId], onDelete: Restrict, map: "UserPlan_order_owner_plan_fkey")
   usageLedgers          UsageLedger[]   @relation("UsageLedgerUserPlanOwner")
   apiCalls              ApiCall[]       @relation("ApiCallUserPlanOwner")
 
@@ -326,6 +326,7 @@ model Order {
   plan             Plan          @relation(fields: [planId], references: [id], onDelete: Restrict)
   userPlans        UserPlan[]
 
+  @@unique([id, userId, planId])
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@index([paymentDriver, status])

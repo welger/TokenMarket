@@ -521,7 +521,7 @@ describe('database integrity constraints', () => {
       'UsageLedger_userId_fkey',
       'ApiCall_userId_fkey',
       'Order_userId_fkey',
-      'UserPlan_orderId_fkey',
+      'UserPlan_order_owner_plan_fkey',
     ];
     const constraints = await prisma.$queryRaw<
       Array<{ conname: string; confdeltype: string }>
@@ -534,7 +534,7 @@ describe('database integrity constraints', () => {
         'UsageLedger_userId_fkey',
         'ApiCall_userId_fkey',
         'Order_userId_fkey',
-        'UserPlan_orderId_fkey'
+        'UserPlan_order_owner_plan_fkey'
       )
       ORDER BY "conname"
     `;
@@ -588,6 +588,95 @@ describe('database integrity constraints', () => {
           'ACTIVE', 1000, 1000, NOW(), NOW()
         )
       `).rejects.toThrow(/UserPlan_orderId_fulfillmentType_key/);
+    });
+  });
+
+  it('requires purchase and refund restorations to reference an order', async () => {
+    for (const fulfillmentType of ['PURCHASE', 'REFUND_RESTORE']) {
+      await inRollback(async (transaction) => {
+        const userId = await insertUser(transaction);
+        const planId = await insertPlan(transaction);
+        await expect(transaction.$executeRaw`
+          INSERT INTO "UserPlan" (
+            "id", "userId", "planId", "fulfillmentType", "status",
+            "initialUnifiedQuota", "remainingUnifiedQuota",
+            "createdAt", "updatedAt"
+          )
+          VALUES (
+            ${randomUUID()}, ${userId}, ${planId},
+            ${fulfillmentType}::"FulfillmentType", 'ACTIVE',
+            1000, 1000, NOW(), NOW()
+          )
+        `).rejects.toThrow(/UserPlan_order_required/);
+      });
+    }
+  });
+
+  it('requires a fulfillment order to belong to the same user and plan', async () => {
+    await inRollback(async (transaction) => {
+      const orderUserId = await insertUser(transaction);
+      const otherUserId = await insertUser(transaction);
+      const orderPlanId = await insertPlan(transaction);
+      const orderId = await insertOrder(
+        transaction,
+        orderUserId,
+        orderPlanId,
+      );
+
+      await expect(transaction.$executeRaw`
+        INSERT INTO "UserPlan" (
+          "id", "userId", "planId", "orderId", "fulfillmentType", "status",
+          "initialUnifiedQuota", "remainingUnifiedQuota",
+          "createdAt", "updatedAt"
+        )
+        VALUES (
+          ${randomUUID()}, ${otherUserId}, ${orderPlanId}, ${orderId},
+          'PURCHASE', 'ACTIVE', 1000, 1000, NOW(), NOW()
+        )
+      `).rejects.toThrow(/UserPlan_order_owner_plan_fkey/);
+    });
+
+    await inRollback(async (transaction) => {
+      const orderUserId = await insertUser(transaction);
+      const orderPlanId = await insertPlan(transaction);
+      const otherPlanId = await insertPlan(transaction);
+      const orderId = await insertOrder(
+        transaction,
+        orderUserId,
+        orderPlanId,
+      );
+      await expect(transaction.$executeRaw`
+        INSERT INTO "UserPlan" (
+          "id", "userId", "planId", "orderId", "fulfillmentType", "status",
+          "initialUnifiedQuota", "remainingUnifiedQuota",
+          "createdAt", "updatedAt"
+        )
+        VALUES (
+          ${randomUUID()}, ${orderUserId}, ${otherPlanId}, ${orderId},
+          'PURCHASE', 'ACTIVE', 1000, 1000, NOW(), NOW()
+        )
+      `).rejects.toThrow(/UserPlan_order_owner_plan_fkey/);
+    });
+
+    await inRollback(async (transaction) => {
+      const orderUserId = await insertUser(transaction);
+      const orderPlanId = await insertPlan(transaction);
+      const orderId = await insertOrder(
+        transaction,
+        orderUserId,
+        orderPlanId,
+      );
+      await expect(transaction.$executeRaw`
+        INSERT INTO "UserPlan" (
+          "id", "userId", "planId", "orderId", "fulfillmentType", "status",
+          "initialUnifiedQuota", "remainingUnifiedQuota",
+          "createdAt", "updatedAt"
+        )
+        VALUES (
+          ${randomUUID()}, ${orderUserId}, ${orderPlanId}, ${orderId},
+          'PURCHASE', 'ACTIVE', 1000, 1000, NOW(), NOW()
+        )
+      `).resolves.toBe(1);
     });
   });
 });

@@ -46,7 +46,15 @@ DROP INDEX "UsageLedger_apiCallId_key";
 DROP INDEX "UserPlan_orderId_key";
 
 -- AlterTable
-ALTER TABLE "UserPlan" ADD COLUMN     "fulfillmentType" "FulfillmentType" NOT NULL;
+-- Existing rows predate fulfillment types. Orders map to purchases; records
+-- without an order are administrative grants.
+ALTER TABLE "UserPlan" ADD COLUMN "fulfillmentType" "FulfillmentType";
+UPDATE "UserPlan"
+SET "fulfillmentType" = CASE
+  WHEN "orderId" IS NULL THEN 'ADMIN_GRANT'::"FulfillmentType"
+  ELSE 'PURCHASE'::"FulfillmentType"
+END;
+ALTER TABLE "UserPlan" ALTER COLUMN "fulfillmentType" SET NOT NULL;
 
 -- CreateIndex
 CREATE UNIQUE INDEX "ApiCall_id_userId_key" ON "ApiCall"("id", "userId");
@@ -56,6 +64,9 @@ CREATE UNIQUE INDEX "ApiKey_id_userId_key" ON "ApiKey"("id", "userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Model_id_providerId_key" ON "Model"("id", "providerId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Order_id_userId_planId_key" ON "Order"("id", "userId", "planId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "UsageLedger_apiCallId_userId_key" ON "UsageLedger"("apiCallId", "userId");
@@ -73,7 +84,7 @@ ALTER TABLE "ApiKey" ADD CONSTRAINT "ApiKey_userId_fkey" FOREIGN KEY ("userId") 
 ALTER TABLE "UserPlan" ADD CONSTRAINT "UserPlan_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "UserPlan" ADD CONSTRAINT "UserPlan_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "UserPlan" ADD CONSTRAINT "UserPlan_order_owner_plan_fkey" FOREIGN KEY ("orderId", "userId", "planId") REFERENCES "Order"("id", "userId", "planId") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "UsageLedger" ADD CONSTRAINT "UsageLedger_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -147,8 +158,11 @@ ALTER TABLE "UserPlan"
         AND "remainingOutputQuota" <= "initialOutputQuota"
       )
     ),
-  ADD CONSTRAINT "UserPlan_purchase_order_required"
-    CHECK ("fulfillmentType" <> 'PURCHASE' OR "orderId" IS NOT NULL);
+  ADD CONSTRAINT "UserPlan_order_required"
+    CHECK (
+      "fulfillmentType" = 'ADMIN_GRANT'
+      OR "orderId" IS NOT NULL
+    );
 
 ALTER TABLE "Order"
   ADD CONSTRAINT "Order_amountMinor_nonnegative"
