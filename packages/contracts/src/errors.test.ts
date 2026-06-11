@@ -12,28 +12,37 @@ import type {
   UsageSummaryDto,
 } from './models';
 
+const errorCases = [
+  [ErrorCode.UNAUTHORIZED, '未授权访问'],
+  [ErrorCode.API_KEY_DISABLED, 'API Key 已停用'],
+  [ErrorCode.QUOTA_EXHAUSTED, '套餐额度不足'],
+  [ErrorCode.MODEL_UNAVAILABLE, '模型暂不可用'],
+  [ErrorCode.RATE_LIMITED, '请求过于频繁'],
+  [ErrorCode.CONTENT_REJECTED, '请求违反内容安全规则'],
+  [ErrorCode.UPSTREAM_TIMEOUT, '上游模型响应超时'],
+  [ErrorCode.INTERNAL_ERROR, '服务暂时不可用'],
+] as const;
+
 describe('public error contract', () => {
-  it('returns a stable public error shape', () => {
-    expect(errorResponse(ErrorCode.API_KEY_DISABLED, 'req_1')).toEqual({
-      error: {
-        code: 'API_KEY_DISABLED',
-        message: 'API Key 已停用',
-        requestId: 'req_1',
-      },
-    });
-  });
+  it.each(errorCases)(
+    'returns a stable public error shape for %s',
+    (code, message) => {
+      expect(errorResponse(code, 'req_1')).toEqual({
+        error: {
+          code,
+          message,
+          requestId: 'req_1',
+        },
+      });
+    },
+  );
 
   it('exposes only the fixed public error codes', () => {
-    expect(Object.values(ErrorCode)).toEqual([
-      'UNAUTHORIZED',
-      'API_KEY_DISABLED',
-      'QUOTA_EXHAUSTED',
-      'MODEL_UNAVAILABLE',
-      'RATE_LIMITED',
-      'CONTENT_REJECTED',
-      'UPSTREAM_TIMEOUT',
-      'INTERNAL_ERROR',
-    ]);
+    const actualCodes = Object.values(ErrorCode);
+    const expectedCodes = errorCases.map(([code]) => code);
+
+    expect(new Set(actualCodes)).toEqual(new Set(expectedCodes));
+    expect(actualCodes).toHaveLength(expectedCodes.length);
   });
 });
 
@@ -59,9 +68,15 @@ type SensitiveField =
   | 'fullResponse';
 
 type AssertNever<T extends never> = T;
-type KeysOfUnion<T> = T extends T ? keyof T : never;
+type RecursiveKeys<T> = T extends readonly (infer Item)[]
+  ? RecursiveKeys<Item>
+  : T extends object
+    ? {
+        [Key in keyof T]: Key | RecursiveKeys<T[Key]>;
+      }[keyof T]
+    : never;
 type PublicDtosDoNotExposeSensitiveFields = AssertNever<
-  Extract<KeysOfUnion<PublicDto>, SensitiveField>
+  Extract<RecursiveKeys<PublicDto>, SensitiveField>
 >;
 
 describe('public DTO safety', () => {
