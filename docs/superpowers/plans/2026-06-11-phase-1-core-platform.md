@@ -521,7 +521,7 @@ git commit -m "feat: add secure API key lifecycle"
 - Test: `apps/api-server/src/metering/unicode-counter.spec.ts`
 - Test: `apps/api-server/test/gateway.e2e-spec.ts`
 
-- [ ] **Step 1: 写 Unicode 计量测试**
+- [x] **Step 1: 写 Unicode 计量测试**
 
 ```ts
 expect(countUnicodeCodePoints('A你😀')).toBe(3);
