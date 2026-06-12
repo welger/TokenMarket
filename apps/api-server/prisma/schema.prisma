@@ -141,7 +141,7 @@ model ApiKey {
   id         String       @id @default(cuid())
   userId     String
   name       String
-  prefix     String
+  prefix     String       @unique
   lastFour   String       @db.VarChar(4)
   secretHash String       @unique
   status     ApiKeyStatus @default(ACTIVE)

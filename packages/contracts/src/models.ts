@@ -64,6 +64,21 @@ export interface ApiCallLogDto {
   createdAt: IsoDateTime;
 }
 
+export type ApiKeyStatus = 'ACTIVE' | 'DISABLED';
+
+export interface ApiKeySummaryDto {
+  id: string;
+  name: string;
+  masked: string;
+  status: ApiKeyStatus;
+  createdAt: IsoDateTime;
+  disabledAt?: IsoDateTime;
+}
+
+export interface ApiKeyCreatedDto extends ApiKeySummaryDto {
+  plaintext: string;
+}
+
 export type OrderStatus =
   | 'PENDING_PAYMENT'
   | 'PAID'

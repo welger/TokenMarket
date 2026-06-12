@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ErrorCode, errorResponse } from './errors';
 import type {
   ApiCallLogDto,
+  ApiKeySummaryDto,
   ComplianceProfileDto,
   InvoiceDto,
   ModelDto,
@@ -55,6 +56,7 @@ type PublicDto =
   | PlanDto
   | UsageSummaryDto
   | ApiCallLogDto
+  | ApiKeySummaryDto
   | OrderDto
   | RefundDto
   | InvoiceDto

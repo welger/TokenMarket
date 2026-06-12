@@ -146,7 +146,7 @@ async function insertApiKey(
       "secretHash", "status", "createdAt"
     )
     VALUES (
-      ${id}, ${userId}, 'Local test key', 'sk-gw', 'TEST',
+      ${id}, ${userId}, 'Local test key', ${`sk-gw_${id}`}, 'TEST',
       ${`hash-${id}`}, 'ACTIVE', NOW()
     )
   `;

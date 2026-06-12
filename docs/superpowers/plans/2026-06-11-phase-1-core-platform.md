@@ -335,7 +335,7 @@ it('blocks support role from changing prices', async () => {
 
 退款、封禁、改价、模型上下架、生产模式切换必须写入操作者、动作、对象、前后摘要和时间，不记录密码或密钥。
 
-- [ ] **Step 4: 验证并提交**
+- [x] **Step 4: 验证并提交**
 
 Run: `pnpm --filter api-server test:e2e -- admin-auth.e2e-spec.ts`
 
@@ -479,7 +479,7 @@ git commit -m "feat: add plans orders and test payments"
 - Create: `apps/api-server/src/api-keys/api-keys.controller.ts`
 - Test: `apps/api-server/src/api-keys/api-keys.service.spec.ts`
 
-- [ ] **Step 1: 写安全行为测试**
+- [x] **Step 1: 写安全行为测试**
 
 ```ts
 it('returns plaintext only when creating a key', async () => {
@@ -491,11 +491,11 @@ it('returns plaintext only when creating a key', async () => {
 });
 ```
 
-- [ ] **Step 2: 实现 Key 生成和哈希**
+- [x] **Step 2: 实现 Key 生成和哈希**
 
 使用 `crypto.randomBytes(32)`，格式为 `sk-gw_<keyId>_<secret>`；哈希使用 `HMAC-SHA256(API_KEY_PEPPER, plaintext)`，使用恒定时间比较。
 
-- [ ] **Step 3: 实现创建、列表和停用接口**
+- [x] **Step 3: 实现创建、列表和停用接口**
 
 限制每用户最多 10 个活动 Key；停用后缓存立即失效；完整值不写日志和数据库。
 

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
 import { AuditModule } from './audit/audit.module.js';
+import { ApiKeysModule } from './api-keys/api-keys.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ComplianceModule } from './compliance/compliance.module.js';
 import { validateEnv } from './common/config/env.schema.js';
@@ -22,6 +23,7 @@ import { RefundsModule } from './refunds/refunds.module.js';
     PrismaModule,
     AuthModule,
     AuditModule,
+    ApiKeysModule,
     ProvidersModule,
     ModelsModule,
     ComplianceModule,
