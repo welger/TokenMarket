@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://gateway:gateway_ci@127.0.0.1:5432/gateway
+  REDIS_URL: redis://127.0.0.1:6379
+  JWT_ACCESS_SECRET: ci-jwt-secret-not-for-production-123456
+  API_KEY_PEPPER: ci-api-key-pepper-not-for-production-123
+  AUDIT_IP_HASH_SECRET: ci-audit-ip-secret-not-for-production-123
+  ADMIN_LOGIN_THROTTLE_SECRET: ci-login-throttle-secret-not-for-production
+  TRUST_PROXY_HOPS: "0"
+  UPSTREAM_BASE_URL: http://127.0.0.1:4010/v1
+  UPSTREAM_DEFAULT_MODEL: test-model
+  PAYMENT_DRIVER: test
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: gateway
+          POSTGRES_PASSWORD: gateway_ci
+          POSTGRES_DB: gateway
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U gateway -d gateway"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.2
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply database migrations
+        run: pnpm --filter api-server prisma migrate deploy
+      - name: Lint
+        run: pnpm lint
+      - name: Test
+        env:
+          NODE_ENV: test
+        run: |
+          pnpm --filter api-server test --runInBand
+          pnpm --filter @gateway/contracts test
+          pnpm --filter @gateway/admin-web test
+      - name: Build
+        run: pnpm build
+        env:
+          NODE_ENV: production
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: gateway
+          POSTGRES_PASSWORD: gateway_ci
+          POSTGRES_DB: gateway
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U gateway -d gateway"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.2
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply database migrations
+        run: pnpm --filter api-server prisma migrate deploy
+      - name: Run E2E tests
+        run: pnpm --filter api-server test:e2e --runInBand
+        env:
+          NODE_ENV: test
