@@ -4,7 +4,7 @@
 
 **Goal:** 为 TokenMarket 配置自动执行 lint、单元测试、构建和完整端到端测试的 GitHub Actions 工作流。
 
-**Architecture:** 使用单个 CI 工作流承载并行的 `Quality` 和 `E2E` 任务。两个任务各自启动一次性 PostgreSQL 16 与 Redis 7 service containers，使用固定的无权限测试环境变量，并在运行测试前部署 Prisma migration。
+**Architecture:** 使用单个 CI 工作流承载并行的 `Quality` 和 `E2E` 任务。两个任务各自启动一次性 PostgreSQL 16 与 Redis 7 service containers，使用固定的无权限测试环境变量，并在运行测试前部署 Prisma migration。E2E 任务内的全部 suites 共享该任务的一套一次性数据库，因此完整 E2E 使用 `--runInBand` 串行运行，避免并发修改共享数据。`NODE_ENV` 仅在测试和构建步骤中按用途设置，避免测试环境污染 Vite 生产构建。
 
 **Tech Stack:** GitHub Actions、Node.js 22、pnpm 10、PostgreSQL 16、Redis 7、Prisma 7、Jest、Vitest
 
@@ -39,14 +39,13 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_ENV: test
   DATABASE_URL: postgresql://gateway:gateway_ci@127.0.0.1:5432/gateway
   REDIS_URL: redis://127.0.0.1:6379
   JWT_ACCESS_SECRET: ci-jwt-secret-not-for-production-123456
   API_KEY_PEPPER: ci-api-key-pepper-not-for-production-123
   AUDIT_IP_HASH_SECRET: ci-audit-ip-secret-not-for-production-123
   ADMIN_LOGIN_THROTTLE_SECRET: ci-login-throttle-secret-not-for-production
-  TRUST_PROXY_HOPS: 0
+  TRUST_PROXY_HOPS: "0"
   UPSTREAM_BASE_URL: http://127.0.0.1:4010/v1
   UPSTREAM_DEFAULT_MODEL: test-model
   PAYMENT_DRIVER: test
@@ -66,28 +65,28 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U gateway -d gateway"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
+          --health-cmd="pg_isready -U gateway -d gateway"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
       redis:
         image: redis:7-alpine
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v6
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10.34.2
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -97,10 +96,17 @@ jobs:
         run: pnpm --filter api-server prisma migrate deploy
       - name: Lint
         run: pnpm lint
-      - name: Run unit tests
-        run: pnpm test
+      - name: Test
+        env:
+          NODE_ENV: test
+        run: |
+          pnpm --filter api-server test --runInBand
+          pnpm --filter @gateway/contracts test
+          pnpm --filter @gateway/admin-web test
       - name: Build
         run: pnpm build
+        env:
+          NODE_ENV: production
 
   e2e:
     name: E2E
@@ -116,28 +122,28 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U gateway -d gateway"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
+          --health-cmd="pg_isready -U gateway -d gateway"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
       redis:
         image: redis:7-alpine
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v6
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10.34.2
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -145,8 +151,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Apply database migrations
         run: pnpm --filter api-server prisma migrate deploy
-      - name: Run end-to-end tests
-        run: pnpm --filter api-server test:e2e
+      - name: Run E2E tests
+        run: pnpm --filter api-server test:e2e --runInBand
+        env:
+          NODE_ENV: test
 ```
 
 成功标志：文件只包含测试凭据，不引用 GitHub Secrets，不使用 `pull_request_target`，任务名称固定为 `Quality` 和 `E2E`。
@@ -191,8 +199,10 @@ docker compose -f infra/docker-compose.yml ps
 ```bash
 pnpm --filter api-server prisma migrate deploy
 pnpm lint
-pnpm test
-pnpm build
+NODE_ENV=test pnpm --filter api-server test --runInBand
+NODE_ENV=test pnpm --filter @gateway/contracts test
+NODE_ENV=test pnpm --filter @gateway/admin-web test
+NODE_ENV=production pnpm build
 ```
 
 风险：migration 会修改 `DATABASE_URL` 指向的数据库；执行前必须确认它是本地开发库。
@@ -204,10 +214,10 @@ pnpm build
 运行：
 
 ```bash
-pnpm --filter api-server test:e2e
+NODE_ENV=test pnpm --filter api-server test:e2e --runInBand
 ```
 
-预期：全部端到端测试通过，命令退出码为 `0`。
+预期：全部端到端测试串行通过，命令退出码为 `0`。
 
 ### Task 3：提交并发布 Pull Request
 

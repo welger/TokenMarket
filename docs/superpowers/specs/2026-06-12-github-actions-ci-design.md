@@ -20,16 +20,17 @@
 
 ### Quality
 
-运行环境为 Ubuntu 和 Node.js 22，使用仓库声明的 pnpm 10 版本。
+运行环境为 Ubuntu，使用 `actions/checkout@v6` 检出代码、`pnpm/action-setup@v6` 配置精确版本 pnpm `10.34.2`，并使用 `actions/setup-node@v6` 配置 Node.js 22 和 pnpm 缓存。
 
 执行顺序：
 
-1. 检出代码。
-2. 配置 pnpm 和 Node.js，并启用 pnpm 缓存。
+1. 使用 `actions/checkout@v6` 检出代码。
+2. 使用 `pnpm/action-setup@v6` 配置 pnpm `10.34.2`，再使用 `actions/setup-node@v6` 配置 Node.js 22 和 pnpm 缓存。
 3. 使用 `pnpm install --frozen-lockfile` 安装依赖。
-4. 执行 `pnpm lint`。
-5. 执行 `pnpm test`。
-6. 执行 `pnpm build`。
+4. 执行 Prisma migration：`pnpm --filter api-server prisma migrate deploy`。
+5. 执行 `pnpm lint`。
+6. 在 `NODE_ENV=test` 下串行执行 API Jest（带 `--runInBand`），再依次执行 contracts 和 admin-web 测试。
+7. 在 `NODE_ENV=production` 下执行 `pnpm build`。
 
 当前 API 测试集中包含数据库完整性和事务测试，因此该任务也使用独立的 PostgreSQL 和 Redis service containers，并在测试前执行 migration。它不连接本地或生产数据库，不访问真实模型供应商，也不配置生产凭据。
 
@@ -47,9 +48,9 @@
 1. 检出代码并安装依赖。
 2. 等待 PostgreSQL 和 Redis 健康检查通过。
 3. 执行 Prisma migration。
-4. 执行 API 服务的完整端到端测试。
+4. 在 `NODE_ENV=test` 下使用 `--runInBand` 串行执行 API 服务的完整端到端测试。
 
-E2E 任务使用独立、一次性的容器数据库。任务结束后由 GitHub 自动销毁，不连接本地或生产数据库。
+E2E 任务使用独立、一次性的容器数据库，但该任务内的全部 E2E suites 共享这一套数据库。因此完整 E2E 必须串行运行，避免并发测试互相修改共享数据而产生不稳定失败。任务结束后由 GitHub 自动销毁数据库，不连接本地或生产数据库。
 
 ## 权限与安全
 
@@ -96,7 +97,7 @@ concurrency:
 
 ## 验收标准
 
-1. 本地 `pnpm lint`、`pnpm test` 和 `pnpm build` 全部通过。
+1. 本地 lint、串行 API 测试、contracts 测试、admin-web 测试和生产构建全部通过。
 2. 工作流 YAML 可被 GitHub 正确解析。
 3. Pull Request 页面同时显示 `Quality` 和 `E2E`。
 4. 两个任务都显示绿色成功状态。
