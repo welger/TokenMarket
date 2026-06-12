@@ -1,0 +1,509 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum AdminRole {
+  OWNER
+  OPERATOR
+  SUPPORT
+  AUDITOR
+}
+
+enum AdminUserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum ProviderStatus {
+  ACTIVE
+  DEGRADED
+  DISABLED
+}
+
+enum ModelStatus {
+  AVAILABLE
+  UNAVAILABLE
+}
+
+enum BillingUnit {
+  CHARACTER
+}
+
+enum PlanStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+}
+
+enum PlanActivationMode {
+  IMMEDIATE
+  ON_FIRST_USE
+}
+
+enum UserPlanStatus {
+  PENDING
+  ACTIVE
+  EXHAUSTED
+  EXPIRED
+  CANCELLED
+}
+
+enum UsageLedgerType {
+  GRANT
+  CONSUME
+  ADJUSTMENT
+  REFUND
+}
+
+enum FulfillmentType {
+  PURCHASE
+  ADMIN_GRANT
+  REFUND_RESTORE
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUND_PENDING
+  REFUNDED
+  REFUND_REJECTED
+}
+
+enum PaymentDriver {
+  TEST
+  WECHAT
+}
+
+enum RefundStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  REFUNDED
+}
+
+enum InvoiceStatus {
+  SUBMITTED
+  APPROVED
+  ISSUED
+  REJECTED
+}
+
+enum ContentPolicyMatchType {
+  KEYWORD
+  REGEX
+}
+
+enum ContentPolicyAction {
+  BLOCK
+}
+
+model User {
+  id                String        @id @default(cuid())
+  wechatOpenId      String?       @unique
+  status            UserStatus    @default(ACTIVE)
+  termsAcceptedAt   DateTime?
+  privacyAcceptedAt DateTime?
+  deletedAt         DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  apiKeys           ApiKey[]      @relation("UserApiKeys")
+  userPlans         UserPlan[]    @relation("UserPlans")
+  usageLedgers      UsageLedger[] @relation("UserUsageLedgers")
+  apiCalls          ApiCall[]     @relation("UserApiCalls")
+  orders            Order[]
+  refunds           Refund[]
+  invoices          Invoice[]
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+model ApiKey {
+  id         String       @id @default(cuid())
+  userId     String
+  name       String
+  prefix     String       @unique
+  lastFour   String       @db.VarChar(4)
+  secretHash String       @unique
+  status     ApiKeyStatus @default(ACTIVE)
+  createdAt  DateTime     @default(now())
+  disabledAt DateTime?
+  user       User         @relation("UserApiKeys", fields: [userId], references: [id], onDelete: Restrict)
+  apiCalls   ApiCall[]    @relation("ApiCallApiKeyOwner")
+
+  @@unique([id, userId])
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model AdminUser {
+  id                 String              @id @default(cuid())
+  username           String              @unique
+  displayName        String
+  passwordHash       String
+  role               AdminRole
+  status             AdminUserStatus     @default(ACTIVE)
+  lastLoginAt        DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  auditLogs          AuditLog[]
+  complianceProfiles ComplianceProfile[]
+  reviewedRefunds    Refund[]
+  reviewedInvoices   Invoice[]
+
+  @@index([status, createdAt])
+  @@index([role, status])
+}
+
+model AdminLoginThrottle {
+  keyHash        String    @id @db.VarChar(64)
+  failureCount   Int       @default(0)
+  blockedUntil   DateTime?
+  leaseToken     String?
+  leaseExpiresAt DateTime?
+  expiresAt      DateTime
+  updatedAt      DateTime  @updatedAt
+
+  @@index([expiresAt])
+}
+
+model Provider {
+  id                String         @id @default(cuid())
+  name              String         @unique
+  displayName       String
+  configRef         String         @unique
+  disclosurePurpose String
+  region            String
+  status            ProviderStatus @default(ACTIVE)
+  routingPriority   Int            @default(100)
+  lastHealthCheckAt DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  models            Model[]
+
+  @@index([status, routingPriority])
+  @@index([updatedAt])
+}
+
+model Model {
+  id               String        @id @default(cuid())
+  providerId       String
+  name             String        @unique
+  upstreamModel    String
+  displayName      String
+  description      String
+  capabilities     String[]      @default([])
+  inputUnit        BillingUnit   @default(CHARACTER)
+  outputUnit       BillingUnit   @default(CHARACTER)
+  contextWindow    Int
+  inputMultiplier  Decimal       @default(1) @db.Decimal(12, 4)
+  outputMultiplier Decimal       @default(1) @db.Decimal(12, 4)
+  status           ModelStatus   @default(UNAVAILABLE)
+  routingPriority  Int           @default(100)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  provider         Provider      @relation(fields: [providerId], references: [id])
+  plans            Plan[]
+  apiCalls         ApiCall[]
+  usageLedgers     UsageLedger[]
+
+  @@unique([id, providerId])
+  @@unique([providerId, upstreamModel])
+  @@index([providerId, status, routingPriority])
+  @@index([status, updatedAt])
+}
+
+model Plan {
+  id             String             @id @default(cuid())
+  name           String
+  description    String
+  priceMinor     Int
+  currency       String             @db.VarChar(3)
+  inputQuota     BigInt?
+  outputQuota    BigInt?
+  unifiedQuota   BigInt?
+  activationMode PlanActivationMode
+  validityDays   Int
+  refundPolicy   String
+  purchaseNotice String
+  status         PlanStatus         @default(DRAFT)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  models         Model[]
+  userPlans      UserPlan[]
+  orders         Order[]
+
+  @@index([status, createdAt])
+  @@index([status, updatedAt])
+}
+
+model UserPlan {
+  id                    String          @id @default(cuid())
+  userId                String
+  planId                String
+  orderId               String?
+  fulfillmentType       FulfillmentType
+  status                UserPlanStatus  @default(PENDING)
+  initialInputQuota     BigInt?
+  remainingInputQuota   BigInt?
+  initialOutputQuota    BigInt?
+  remainingOutputQuota  BigInt?
+  initialUnifiedQuota   BigInt?
+  remainingUnifiedQuota BigInt?
+  activatedAt           DateTime?
+  expiresAt             DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  user                  User            @relation("UserPlans", fields: [userId], references: [id], onDelete: Restrict)
+  plan                  Plan            @relation(fields: [planId], references: [id], onDelete: Restrict)
+  order                 Order?          @relation(fields: [orderId, userId, planId], references: [id, userId, planId], onDelete: Restrict, map: "UserPlan_order_owner_plan_fkey")
+  usageLedgers          UsageLedger[]   @relation("UsageLedgerUserPlanOwner")
+  apiCalls              ApiCall[]       @relation("ApiCallUserPlanOwner")
+
+  @@unique([id, userId])
+  @@unique([orderId, fulfillmentType])
+  @@index([userId, status, expiresAt])
+  @@index([planId, status])
+  @@index([status, expiresAt])
+}
+
+model UsageLedger {
+  id               String          @id @default(cuid())
+  userId           String
+  userPlanId       String
+  modelId          String?
+  apiCallId        String?
+  type             UsageLedgerType
+  inputUnits       BigInt          @default(0)
+  outputUnits      BigInt          @default(0)
+  chargedUnits     BigInt          @default(0)
+  remainingInput   BigInt?
+  remainingOutput  BigInt?
+  remainingUnified BigInt?
+  description      String?
+  createdAt        DateTime        @default(now())
+  user             User            @relation("UserUsageLedgers", fields: [userId], references: [id], onDelete: Restrict)
+  userPlan         UserPlan        @relation("UsageLedgerUserPlanOwner", fields: [userPlanId, userId], references: [id, userId], onDelete: Restrict, map: "UsageLedger_userPlan_owner_fkey")
+  model            Model?          @relation(fields: [modelId], references: [id])
+  apiCall          ApiCall?        @relation("UsageLedgerApiCallOwner", fields: [apiCallId, userId], references: [id, userId], onDelete: Restrict, map: "UsageLedger_apiCall_owner_fkey")
+
+  @@unique([apiCallId, userId])
+  @@index([userId, createdAt])
+  @@index([userPlanId, createdAt])
+  @@index([type, createdAt])
+}
+
+model ApiCall {
+  id                 String       @id @default(cuid())
+  requestId          String       @unique
+  userId             String
+  apiKeyId           String
+  modelId            String
+  userPlanId         String?
+  inputCharacters    Int          @default(0)
+  outputCharacters   Int          @default(0)
+  inputChargedUnits  BigInt       @default(0)
+  outputChargedUnits BigInt       @default(0)
+  chargedUnits       BigInt       @default(0)
+  httpStatus         Int
+  errorCode          String?
+  durationMs         Int
+  upstreamRequestId  String?
+  errorSummary       String?      @db.VarChar(500)
+  ipHash             String?
+  createdAt          DateTime     @default(now())
+  user               User         @relation("UserApiCalls", fields: [userId], references: [id], onDelete: Restrict)
+  apiKey             ApiKey       @relation("ApiCallApiKeyOwner", fields: [apiKeyId, userId], references: [id, userId], onDelete: Restrict, map: "ApiCall_apiKey_owner_fkey")
+  model              Model        @relation(fields: [modelId], references: [id])
+  userPlan           UserPlan?    @relation("ApiCallUserPlanOwner", fields: [userPlanId, userId], references: [id, userId], onDelete: Restrict, map: "ApiCall_userPlan_owner_fkey")
+  usageLedger        UsageLedger? @relation("UsageLedgerApiCallOwner")
+
+  @@unique([id, userId])
+  @@index([userId, createdAt])
+  @@index([apiKeyId, createdAt])
+  @@index([modelId, createdAt])
+  @@index([httpStatus, createdAt])
+  @@index([errorCode, createdAt])
+}
+
+model Order {
+  id               String         @id @default(cuid())
+  orderNumber      String         @unique
+  userId           String
+  planId           String
+  amountMinor      Int
+  currency         String         @db.VarChar(3)
+  status           OrderStatus    @default(PENDING_PAYMENT)
+  paymentDriver    PaymentDriver
+  paymentReference String?        @unique
+  idempotencyKey   String?
+  paidAt           DateTime?
+  fulfilledAt      DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  user             User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  plan             Plan           @relation(fields: [planId], references: [id], onDelete: Restrict)
+  userPlans        UserPlan[]
+  refunds          Refund[]
+  invoiceOrders    InvoiceOrder[]
+
+  @@unique([id, userId, planId])
+  @@unique([id, userId])
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([paymentDriver, status])
+}
+
+model Refund {
+  id                String       @id @default(cuid())
+  orderId           String
+  userId            String
+  amountMinor       Int
+  currency          String       @db.VarChar(3)
+  reason            String
+  status            RefundStatus @default(SUBMITTED)
+  reviewedByAdminId String?
+  reviewedAt        DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  order             Order        @relation(fields: [orderId, userId], references: [id, userId], onDelete: Restrict)
+  user              User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  reviewedByAdmin   AdminUser?   @relation(fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([orderId, createdAt])
+  @@index([status, createdAt])
+  @@index([reviewedByAdminId, reviewedAt])
+}
+
+model Invoice {
+  id                String         @id @default(cuid())
+  userId            String
+  title             String
+  taxNumber         String?
+  amountMinor       Int
+  currency          String         @db.VarChar(3)
+  status            InvoiceStatus  @default(SUBMITTED)
+  reviewedByAdminId String?
+  reviewedAt        DateTime?
+  issuedAt          DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  user              User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  reviewedByAdmin   AdminUser?     @relation(fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+  invoiceOrders     InvoiceOrder[]
+
+  @@unique([id, userId])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([reviewedByAdminId, reviewedAt])
+}
+
+model InvoiceOrder {
+  invoiceId String
+  orderId   String
+  userId    String
+  invoice   Invoice @relation(fields: [invoiceId, userId], references: [id, userId], onDelete: Restrict)
+  order     Order   @relation(fields: [orderId, userId], references: [id, userId], onDelete: Restrict)
+
+  @@id([invoiceId, orderId])
+  @@unique([orderId])
+  @@index([userId])
+}
+
+model ComplianceProfile {
+  id                        String     @id @default(cuid())
+  profileKey                String     @unique @default("default")
+  operatorName              String?
+  customerServiceContact    String?
+  complaintChannel          String?
+  serverRegion              String?
+  logRetentionDays          Int?
+  businessDataRetentionDays Int?
+  dataExportMethod          String?
+  dataDeletionMethod        String?
+  accountCancellationMethod String?
+  privacyPolicyUrl          String?
+  termsOfServiceUrl         String?
+  contentSafetyRulesUrl     String?
+  productionEnabled         Boolean    @default(false)
+  updatedByAdminId          String?
+  createdAt                 DateTime   @default(now())
+  updatedAt                 DateTime   @updatedAt
+  updatedByAdmin            AdminUser? @relation(fields: [updatedByAdminId], references: [id])
+
+  @@index([productionEnabled, updatedAt])
+  @@index([updatedByAdminId, updatedAt])
+}
+
+model ContentPolicyRule {
+  id        String                 @id @default(cuid())
+  name      String
+  enabled   Boolean                @default(true)
+  category  String
+  matchType ContentPolicyMatchType
+  pattern   String
+  action    ContentPolicyAction    @default(BLOCK)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  events    ContentPolicyEvent[]
+
+  @@index([enabled, category])
+  @@index([createdAt])
+}
+
+model ContentPolicyEvent {
+  id        String              @id @default(cuid())
+  ruleId    String?
+  category  String
+  action    ContentPolicyAction
+  requestId String
+  createdAt DateTime            @default(now())
+  rule      ContentPolicyRule?  @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  @@index([requestId])
+  @@index([ruleId, createdAt])
+  @@index([category, createdAt])
+}
+
+model AuditLog {
+  id            String     @id @default(cuid())
+  adminUserId   String?
+  action        String
+  resourceType  String
+  resourceId    String?
+  requestId     String?
+  beforeSummary Json?
+  afterSummary  Json?
+  ipHash        String?
+  createdAt     DateTime   @default(now())
+  adminUser     AdminUser? @relation(fields: [adminUserId], references: [id])
+
+  @@index([adminUserId, createdAt])
+  @@index([resourceType, resourceId, createdAt])
+  @@index([action, createdAt])
+  @@index([requestId])
+}

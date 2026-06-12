@@ -1,0 +1,174 @@
+import { validateEnv } from './env.schema.js';
+
+const validEnv = {
+  NODE_ENV: 'development',
+  DATABASE_URL: 'postgresql://gateway:gateway_local@127.0.0.1:5432/gateway',
+  REDIS_URL: 'redis://127.0.0.1:6379',
+  JWT_ACCESS_SECRET: 'a'.repeat(32),
+  API_KEY_PEPPER: 'b'.repeat(32),
+  AUDIT_IP_HASH_SECRET: 'c'.repeat(32),
+  ADMIN_LOGIN_THROTTLE_SECRET: 'd'.repeat(32),
+  UPSTREAM_BASE_URL: 'http://127.0.0.1:4010/v1',
+  PAYMENT_DRIVER: 'test',
+};
+
+function getValidationError(config: Record<string, unknown>): Error {
+  try {
+    validateEnv(config);
+  } catch (error) {
+    if (error instanceof Error) {
+      return error;
+    }
+  }
+
+  throw new Error('Expected environment validation to fail');
+}
+
+describe('validateEnv', () => {
+  it('rejects short secrets', () => {
+    expect(() =>
+      validateEnv({
+        ...validEnv,
+        JWT_ACCESS_SECRET: 'short',
+        API_KEY_PEPPER: 'short',
+        AUDIT_IP_HASH_SECRET: 'short',
+        ADMIN_LOGIN_THROTTLE_SECRET: 'short',
+      }),
+    ).toThrow();
+  });
+
+  it.each([
+    ['DATABASE_URL', 'https://database.example.com'],
+    ['REDIS_URL', 'https://cache.example.com'],
+    ['UPSTREAM_BASE_URL', 'ftp://upstream.example.com'],
+  ])('rejects an invalid %s', (key, value) => {
+    expect(getValidationError({ ...validEnv, [key]: value }).message).toBe(
+      `Invalid environment configuration: ${key}`,
+    );
+  });
+
+  it('accepts only the supported URL schemes', () => {
+    expect(
+      validateEnv({
+        ...validEnv,
+        DATABASE_URL: 'postgres://gateway:local@127.0.0.1:5432/gateway',
+        REDIS_URL: 'rediss://cache.example.com:6380',
+        UPSTREAM_BASE_URL: 'https://upstream.example.com/v1',
+      }),
+    ).toMatchObject({
+      DATABASE_URL: 'postgres://gateway:local@127.0.0.1:5432/gateway',
+      REDIS_URL: 'rediss://cache.example.com:6380',
+      UPSTREAM_BASE_URL: 'https://upstream.example.com/v1',
+    });
+  });
+
+  it('trims secrets before enforcing the minimum length', () => {
+    const validated = validateEnv({
+      ...validEnv,
+      JWT_ACCESS_SECRET: `  ${'a'.repeat(32)}  `,
+      API_KEY_PEPPER: `  ${'b'.repeat(32)}  `,
+      AUDIT_IP_HASH_SECRET: `  ${'c'.repeat(32)}  `,
+      ADMIN_LOGIN_THROTTLE_SECRET: `  ${'d'.repeat(32)}  `,
+    });
+
+    expect(validated.JWT_ACCESS_SECRET).toBe('a'.repeat(32));
+    expect(validated.API_KEY_PEPPER).toBe('b'.repeat(32));
+    expect(validated.AUDIT_IP_HASH_SECRET).toBe('c'.repeat(32));
+    expect(validated.ADMIN_LOGIN_THROTTLE_SECRET).toBe('d'.repeat(32));
+  });
+
+  it('rejects whitespace-only secrets', () => {
+    const error = getValidationError({
+      ...validEnv,
+      JWT_ACCESS_SECRET: ' '.repeat(64),
+      API_KEY_PEPPER: '\t'.repeat(64),
+      AUDIT_IP_HASH_SECRET: '\n'.repeat(64),
+      ADMIN_LOGIN_THROTTLE_SECRET: ' '.repeat(64),
+    });
+
+    expect(error.message).toBe(
+      'Invalid environment configuration: JWT_ACCESS_SECRET, API_KEY_PEPPER, AUDIT_IP_HASH_SECRET, ADMIN_LOGIN_THROTTLE_SECRET',
+    );
+  });
+
+  it('summarizes invalid fields without leaking their values', () => {
+    const privateDatabaseValue = 'https://private-database.example.com/secret';
+    const privateRedisValue = 'https://private-cache.example.com/secret';
+    const error = getValidationError({
+      ...validEnv,
+      DATABASE_URL: privateDatabaseValue,
+      REDIS_URL: privateRedisValue,
+      JWT_ACCESS_SECRET: 'private-short-secret',
+    });
+
+    expect(error.message).toBe(
+      'Invalid environment configuration: DATABASE_URL, REDIS_URL, JWT_ACCESS_SECRET',
+    );
+    expect(error.message).not.toContain(privateDatabaseValue);
+    expect(error.message).not.toContain(privateRedisValue);
+    expect(error.message).not.toContain('private-short-secret');
+  });
+
+  it('rejects unsupported payment drivers', () => {
+    expect(() =>
+      validateEnv({ ...validEnv, PAYMENT_DRIVER: 'unsupported' }),
+    ).toThrow();
+  });
+
+  it.each([-1, 6, 1.5])('rejects TRUST_PROXY_HOPS=%s', (value) => {
+    expect(() =>
+      validateEnv({ ...validEnv, TRUST_PROXY_HOPS: value }),
+    ).toThrow('TRUST_PROXY_HOPS');
+  });
+
+  it('defaults TRUST_PROXY_HOPS to zero', () => {
+    expect(validateEnv(validEnv).TRUST_PROXY_HOPS).toBe(0);
+  });
+
+  it('defaults gateway rate limits', () => {
+    expect(validateEnv(validEnv)).toMatchObject({
+      GATEWAY_IP_RATE_LIMIT_PER_MINUTE: 120,
+      GATEWAY_USER_RATE_LIMIT_PER_MINUTE: 60,
+      GATEWAY_KEY_RATE_LIMIT_PER_MINUTE: 60,
+    });
+  });
+
+  it.each([
+    ['GATEWAY_IP_RATE_LIMIT_PER_MINUTE', 0],
+    ['GATEWAY_USER_RATE_LIMIT_PER_MINUTE', -1],
+    ['GATEWAY_KEY_RATE_LIMIT_PER_MINUTE', 1.5],
+  ])('rejects invalid %s', (key, value) => {
+    expect(() =>
+      validateEnv({ ...validEnv, [key]: value }),
+    ).toThrow(String(key));
+  });
+
+  it('accepts TRUST_PROXY_HOPS from zero through five', () => {
+    expect(
+      validateEnv({ ...validEnv, TRUST_PROXY_HOPS: '5' }),
+    ).toMatchObject({ TRUST_PROXY_HOPS: 5 });
+  });
+
+  it('rejects the test payment driver in production', () => {
+    expect(() =>
+      validateEnv({
+        ...validEnv,
+        NODE_ENV: 'production',
+        PAYMENT_DRIVER: 'test',
+      }),
+    ).toThrow();
+  });
+
+  it('accepts the WeChat payment driver in production', () => {
+    expect(
+      validateEnv({
+        ...validEnv,
+        NODE_ENV: 'production',
+        PAYMENT_DRIVER: 'wechat',
+      }),
+    ).toMatchObject({
+      NODE_ENV: 'production',
+      PAYMENT_DRIVER: 'wechat',
+    });
+  });
+});

@@ -134,7 +134,7 @@ docker compose -f infra/docker-compose.yml up -d
 
 Expected: `git status` 可用，PostgreSQL 和 Redis healthcheck 为 healthy。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add package.json pnpm-workspace.yaml tsconfig.base.json infra .env.example .gitignore
@@ -335,7 +335,7 @@ it('blocks support role from changing prices', async () => {
 
 退款、封禁、改价、模型上下架、生产模式切换必须写入操作者、动作、对象、前后摘要和时间，不记录密码或密钥。
 
-- [ ] **Step 4: 验证并提交**
+- [x] **Step 4: 验证并提交**
 
 Run: `pnpm --filter api-server test:e2e -- admin-auth.e2e-spec.ts`
 
@@ -422,7 +422,7 @@ git commit -m "feat: manage providers models and compliance"
 - Test: `apps/api-server/src/refunds/refunds.service.spec.ts`
 - Test: `apps/api-server/src/invoices/invoices.service.spec.ts`
 
-- [ ] **Step 1: 写套餐优先级测试**
+- [x] **Step 1: 写套餐优先级测试**
 
 ```ts
 it('uses the earliest expiring applicable plan', () => {
@@ -433,22 +433,22 @@ it('uses the earliest expiring applicable plan', () => {
 });
 ```
 
-- [ ] **Step 2: 写订单状态机测试**
+- [x] **Step 2: 写订单状态机测试**
 
 ```ts
 expect(transition('PENDING_PAYMENT', 'PAY')).toBe('PAID');
 expect(() => transition('FULFILLED', 'PAY')).toThrow('INVALID_ORDER_TRANSITION');
 ```
 
-- [ ] **Step 3: 实现测试支付驱动**
+- [x] **Step 3: 实现测试支付驱动**
 
 测试驱动只接受管理员或测试环境调用，支付结果带 `driver: "test"`，接口和页面必须显示“测试支付”，不得生成真实交易号。
 
-- [ ] **Step 4: 实现幂等套餐发放**
+- [x] **Step 4: 实现幂等套餐发放**
 
 订单支付和发放在事务内执行；以 `orderId + fulfillmentType` 唯一约束阻止重复发放。
 
-- [ ] **Step 5: 实现退款和发票状态流**
+- [x] **Step 5: 实现退款和发票状态流**
 
 退款申请必须引用已支付订单；测试支付只允许测试退款。发票状态固定为 `SUBMITTED -> APPROVED -> ISSUED`，也允许 `SUBMITTED -> REJECTED`；未配置真实开票驱动时禁止进入 `ISSUED`。
 
@@ -460,7 +460,7 @@ it('does not issue an invoice without a real invoice driver', async () => {
 
 提供用户接口 `/me/orders`、`/me/refunds`、`/me/invoices` 和管理员审核接口。
 
-- [ ] **Step 6: 验证并提交**
+- [x] **Step 6: 验证并提交**
 
 Run: `pnpm --filter api-server test -- plan-selection order-state-machine refunds invoices`
 
@@ -479,7 +479,7 @@ git commit -m "feat: add plans orders and test payments"
 - Create: `apps/api-server/src/api-keys/api-keys.controller.ts`
 - Test: `apps/api-server/src/api-keys/api-keys.service.spec.ts`
 
-- [ ] **Step 1: 写安全行为测试**
+- [x] **Step 1: 写安全行为测试**
 
 ```ts
 it('returns plaintext only when creating a key', async () => {
@@ -491,15 +491,15 @@ it('returns plaintext only when creating a key', async () => {
 });
 ```
 
-- [ ] **Step 2: 实现 Key 生成和哈希**
+- [x] **Step 2: 实现 Key 生成和哈希**
 
 使用 `crypto.randomBytes(32)`，格式为 `sk-gw_<keyId>_<secret>`；哈希使用 `HMAC-SHA256(API_KEY_PEPPER, plaintext)`，使用恒定时间比较。
 
-- [ ] **Step 3: 实现创建、列表和停用接口**
+- [x] **Step 3: 实现创建、列表和停用接口**
 
 限制每用户最多 10 个活动 Key；停用后缓存立即失效；完整值不写日志和数据库。
 
-- [ ] **Step 4: 验证并提交**
+- [x] **Step 4: 验证并提交**
 
 Run: `pnpm --filter api-server test -- api-keys.service.spec.ts`
 
@@ -521,14 +521,14 @@ git commit -m "feat: add secure API key lifecycle"
 - Test: `apps/api-server/src/metering/unicode-counter.spec.ts`
 - Test: `apps/api-server/test/gateway.e2e-spec.ts`
 
-- [ ] **Step 1: 写 Unicode 计量测试**
+- [x] **Step 1: 写 Unicode 计量测试**
 
 ```ts
 expect(countUnicodeCodePoints('A你😀')).toBe(3);
 expect(countUnicodeCodePoints('a b\n')).toBe(4);
 ```
 
-- [ ] **Step 2: 写失败不扣费测试**
+- [x] **Step 2: 写失败不扣费测试**
 
 ```ts
 it('does not charge when upstream fails before output', async () => {
@@ -538,23 +538,23 @@ it('does not charge when upstream fails before output', async () => {
 });
 ```
 
-- [ ] **Step 3: 实现普通和流式转发**
+- [x] **Step 3: 实现普通和流式转发**
 
 支持 `/v1/chat/completions` 的普通响应及 SSE；平台模型名映射到上游模型名；所有响应包含 `x-request-id`。
 
-- [ ] **Step 4: 实现事务扣减**
+- [x] **Step 4: 实现事务扣减**
 
 锁定选中的 `UserPlan` 行，验证余额，写入 `UsageLedger` 和 `ApiCall` 后扣减。流式中断按已发送文本计费；计费失败写入 Redis 补偿队列并触发告警。
 
-- [ ] **Step 5: 实现限流和日志脱敏**
+- [x] **Step 5: 实现限流和日志脱敏**
 
 按 IP、用户和 Key 三个维度限流；只保存请求元数据、字符量、状态、耗时和脱敏错误。
 
-- [ ] **Step 6: 实现用户用量查询接口**
+- [x] **Step 6: 实现用户用量查询接口**
 
 提供 `/me/usage/summary`、`/me/api-calls` 和 `/me/plans`；所有查询强制使用认证用户 ID，分页最大 100 条，默认按创建时间倒序。
 
-- [ ] **Step 7: 验证并提交**
+- [x] **Step 7: 验证并提交**
 
 Run:
 
@@ -584,7 +584,7 @@ git commit -m "feat: proxy model calls and meter usage"
 - Create: `apps/admin-web/src/pages/CompliancePage.tsx`
 - Test: `apps/admin-web/src/pages/CompliancePage.test.tsx`
 
-- [ ] **Step 1: 写生产门槛 UI 测试**
+- [x] **Step 1: 写生产门槛 UI 测试**
 
 ```tsx
 it('shows missing required disclosures and disables production switch', async () => {
@@ -594,11 +594,11 @@ it('shows missing required disclosures and disables production switch', async ()
 });
 ```
 
-- [ ] **Step 2: 建立认证布局和 API 客户端**
+- [x] **Step 2: 建立认证布局和 API 客户端**
 
 401 时清理管理员会话并跳转登录；错误页显示平台错误码和请求 ID，不显示后端堆栈。
 
-- [ ] **Step 3: 实现模型、套餐、订单和合规页面**
+- [x] **Step 3: 实现模型、套餐、订单和合规页面**
 
 改价、退款、封禁和生产切换使用确认弹窗；表格默认按更新时间倒序；不显示供应商密钥字段。
 
@@ -625,11 +625,11 @@ git commit -m "feat: add operations admin console"
 - Create: `apps/api-server/test/platform-flow.e2e-spec.ts`
 - Create: `docs/runbooks/local-development.md`
 
-- [ ] **Step 1: 写固定测试种子**
+- [x] **Step 1: 写固定测试种子**
 
 创建测试管理员、测试用户、测试模型、测试套餐和完整的合规资料；不得写入真实手机号、公司名或上游密钥。
 
-- [ ] **Step 2: 写完整流程测试**
+- [x] **Step 2: 写完整流程测试**
 
 测试顺序：
 
@@ -645,7 +645,7 @@ git commit -m "feat: add operations admin console"
 -> 验证订单和审计记录
 ```
 
-- [ ] **Step 3: 运行完整验证**
+- [x] **Step 3: 运行完整验证**
 
 Run:
 
@@ -658,7 +658,7 @@ pnpm --filter api-server test:e2e -- platform-flow.e2e-spec.ts
 
 Expected: 全部命令退出码为 0。
 
-- [ ] **Step 4: 人工成功标志**
+- [x] **Step 4: 人工成功标志**
 
 访问运营后台后，可以维护模型、套餐与合规资料；使用创建出的测试 Key 调用 `/v1/chat/completions` 后，额度和日志同步变化。
 

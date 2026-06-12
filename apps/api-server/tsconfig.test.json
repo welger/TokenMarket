@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "isolatedModules": true,
+    "noEmit": false,
+    "outDir": "./.test-dist",
+    "rootDir": ".",
+    "types": ["jest", "node"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.spec.ts",
+    "test/**/*.ts",
+    "prisma/**/*.ts"
+  ]
+}
