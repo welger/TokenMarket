@@ -13,6 +13,8 @@ import { OrdersModule } from './orders/orders.module.js';
 import { PlansModule } from './plans/plans.module.js';
 import { ProvidersModule } from './providers/providers.module.js';
 import { RefundsModule } from './refunds/refunds.module.js';
+import { GatewayModule } from './gateway/gateway.module.js';
+import { UsageModule } from './usage/usage.module.js';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { RefundsModule } from './refunds/refunds.module.js';
     OrdersModule,
     RefundsModule,
     InvoicesModule,
+    GatewayModule,
+    UsageModule,
   ],
 })
 export class AppModule {}

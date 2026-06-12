@@ -13,6 +13,9 @@ export interface EnvironmentVariables {
   AUDIT_IP_HASH_SECRET: string;
   ADMIN_LOGIN_THROTTLE_SECRET: string;
   TRUST_PROXY_HOPS: number;
+  GATEWAY_IP_RATE_LIMIT_PER_MINUTE: number;
+  GATEWAY_USER_RATE_LIMIT_PER_MINUTE: number;
+  GATEWAY_KEY_RATE_LIMIT_PER_MINUTE: number;
   UPSTREAM_BASE_URL: string;
   UPSTREAM_API_KEY?: string;
   UPSTREAM_DEFAULT_MODEL: string;
@@ -33,6 +36,21 @@ const envSchema = Joi.object<EnvironmentVariables>({
   AUDIT_IP_HASH_SECRET: Joi.string().trim().min(32).required(),
   ADMIN_LOGIN_THROTTLE_SECRET: Joi.string().trim().min(32).required(),
   TRUST_PROXY_HOPS: Joi.number().integer().min(0).max(5).default(0),
+  GATEWAY_IP_RATE_LIMIT_PER_MINUTE: Joi.number()
+    .integer()
+    .min(1)
+    .max(1_000_000)
+    .default(120),
+  GATEWAY_USER_RATE_LIMIT_PER_MINUTE: Joi.number()
+    .integer()
+    .min(1)
+    .max(1_000_000)
+    .default(60),
+  GATEWAY_KEY_RATE_LIMIT_PER_MINUTE: Joi.number()
+    .integer()
+    .min(1)
+    .max(1_000_000)
+    .default(60),
   UPSTREAM_BASE_URL: Joi.string()
     .uri({ scheme: ['http', 'https'] })
     .required(),

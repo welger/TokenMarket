@@ -125,6 +125,24 @@ describe('validateEnv', () => {
     expect(validateEnv(validEnv).TRUST_PROXY_HOPS).toBe(0);
   });
 
+  it('defaults gateway rate limits', () => {
+    expect(validateEnv(validEnv)).toMatchObject({
+      GATEWAY_IP_RATE_LIMIT_PER_MINUTE: 120,
+      GATEWAY_USER_RATE_LIMIT_PER_MINUTE: 60,
+      GATEWAY_KEY_RATE_LIMIT_PER_MINUTE: 60,
+    });
+  });
+
+  it.each([
+    ['GATEWAY_IP_RATE_LIMIT_PER_MINUTE', 0],
+    ['GATEWAY_USER_RATE_LIMIT_PER_MINUTE', -1],
+    ['GATEWAY_KEY_RATE_LIMIT_PER_MINUTE', 1.5],
+  ])('rejects invalid %s', (key, value) => {
+    expect(() =>
+      validateEnv({ ...validEnv, [key]: value }),
+    ).toThrow(String(key));
+  });
+
   it('accepts TRUST_PROXY_HOPS from zero through five', () => {
     expect(
       validateEnv({ ...validEnv, TRUST_PROXY_HOPS: '5' }),

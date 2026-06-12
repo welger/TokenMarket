@@ -528,7 +528,7 @@ expect(countUnicodeCodePoints('A你😀')).toBe(3);
 expect(countUnicodeCodePoints('a b\n')).toBe(4);
 ```
 
-- [ ] **Step 2: 写失败不扣费测试**
+- [x] **Step 2: 写失败不扣费测试**
 
 ```ts
 it('does not charge when upstream fails before output', async () => {
@@ -538,23 +538,23 @@ it('does not charge when upstream fails before output', async () => {
 });
 ```
 
-- [ ] **Step 3: 实现普通和流式转发**
+- [x] **Step 3: 实现普通和流式转发**
 
 支持 `/v1/chat/completions` 的普通响应及 SSE；平台模型名映射到上游模型名；所有响应包含 `x-request-id`。
 
-- [ ] **Step 4: 实现事务扣减**
+- [x] **Step 4: 实现事务扣减**
 
 锁定选中的 `UserPlan` 行，验证余额，写入 `UsageLedger` 和 `ApiCall` 后扣减。流式中断按已发送文本计费；计费失败写入 Redis 补偿队列并触发告警。
 
-- [ ] **Step 5: 实现限流和日志脱敏**
+- [x] **Step 5: 实现限流和日志脱敏**
 
 按 IP、用户和 Key 三个维度限流；只保存请求元数据、字符量、状态、耗时和脱敏错误。
 
-- [ ] **Step 6: 实现用户用量查询接口**
+- [x] **Step 6: 实现用户用量查询接口**
 
 提供 `/me/usage/summary`、`/me/api-calls` 和 `/me/plans`；所有查询强制使用认证用户 ID，分页最大 100 条，默认按创建时间倒序。
 
-- [ ] **Step 7: 验证并提交**
+- [x] **Step 7: 验证并提交**
 
 Run:
 
