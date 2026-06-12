@@ -75,4 +75,53 @@ describe('AuditService', () => {
     expect(serialized).not.toContain('private-token');
     expect(serialized).not.toContain('private-secret');
   });
+
+  it('bounds strings, arrays, object keys and final JSON bytes', async () => {
+    const create = jest.fn().mockResolvedValue({ id: 'audit_2' });
+    const prisma = {
+      auditLog: { create },
+    } as unknown as PrismaService;
+    const config = {
+      get: jest.fn().mockReturnValue('s'.repeat(32)),
+    } as unknown as ConfigService<EnvironmentVariables, true>;
+    const service = new AuditService(prisma, config);
+
+    await service.record({
+      adminUserId: 'admin_1',
+      action: 'LARGE_SUMMARY',
+      resourceType: 'test',
+      beforeSummary: {
+        long: 'x'.repeat(5000),
+        manyItems: Array.from({ length: 200 }, (_, index) => index),
+        manyKeys: Object.fromEntries(
+          Array.from({ length: 200 }, (_, index) => [
+            `field${index}`,
+            'value',
+          ]),
+        ),
+      },
+      afterSummary: {
+        huge: Array.from({ length: 100 }, () => 'z'.repeat(1000)),
+      },
+    });
+
+    const data = create.mock.calls[0]?.[0]?.data;
+    const before = data.beforeSummary as {
+      long: string;
+      manyItems: unknown[];
+      manyKeys: Record<string, unknown>;
+    };
+
+    expect(before.long.length).toBeLessThanOrEqual(1024);
+    expect(before.long).toContain('[TRUNCATED]');
+    expect(before.manyItems.length).toBeLessThanOrEqual(50);
+    expect(Object.keys(before.manyKeys).length).toBeLessThanOrEqual(50);
+    expect(Buffer.byteLength(JSON.stringify(data.beforeSummary))).toBeLessThanOrEqual(
+      16 * 1024,
+    );
+    expect(Buffer.byteLength(JSON.stringify(data.afterSummary))).toBeLessThanOrEqual(
+      16 * 1024,
+    );
+    expect(data.afterSummary).toEqual({ __truncated__: true });
+  });
 });

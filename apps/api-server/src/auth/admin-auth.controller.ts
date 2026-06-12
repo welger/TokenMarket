@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req } from '@nestjs/common';
 
 import {
   AdminAuthService,
@@ -10,12 +10,23 @@ interface AdminLoginBody {
   password?: unknown;
 }
 
+interface LoginRequest {
+  ip: string;
+}
+
 @Controller('admin/auth')
 export class AdminAuthController {
   constructor(private readonly adminAuthService: AdminAuthService) {}
 
   @Post('login')
-  login(@Body() body: AdminLoginBody): Promise<AdminLoginResult> {
-    return this.adminAuthService.login(body?.username, body?.password);
+  login(
+    @Body() body: AdminLoginBody,
+    @Req() request: LoginRequest,
+  ): Promise<AdminLoginResult> {
+    return this.adminAuthService.login(
+      body?.username,
+      body?.password,
+      request.ip,
+    );
   }
 }

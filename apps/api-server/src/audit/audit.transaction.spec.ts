@@ -31,6 +31,9 @@ describe('AuditService audited transactions', () => {
       REDIS_URL: 'redis://127.0.0.1:6379',
       JWT_ACCESS_SECRET: 'j'.repeat(32),
       API_KEY_PEPPER: 'p'.repeat(32),
+      AUDIT_IP_HASH_SECRET: 'a'.repeat(32),
+      ADMIN_LOGIN_THROTTLE_SECRET: 't'.repeat(32),
+      TRUST_PROXY_HOPS: 0,
       UPSTREAM_BASE_URL: 'http://127.0.0.1:4010/v1',
       UPSTREAM_DEFAULT_MODEL: 'test-model',
       PAYMENT_DRIVER: 'test',
@@ -73,9 +76,11 @@ describe('AuditService audited transactions', () => {
 
   afterAll(async () => {
     if (prisma) {
-      await prisma.auditLog.deleteMany({
-        where: { requestId: { startsWith: requestIdPrefix } },
-      });
+      if (adminUserId || planId) {
+        await prisma.auditLog.deleteMany({
+          where: { requestId: { startsWith: requestIdPrefix } },
+        });
+      }
       if (planId) {
         await prisma.plan.delete({ where: { id: planId } });
       }
@@ -90,22 +95,24 @@ describe('AuditService audited transactions', () => {
     const requestId = `${requestIdPrefix}-rollback`;
 
     await expect(
-      service.executeAuditedMutation(
-        async (transaction) =>
-          transaction.plan.update({
-            where: { id: planId },
-            data: { priceMinor: 200 },
-          }),
-        (updatedPlan) => ({
+      service.runInAuditedTransaction(
+        {
           adminUserId: `missing-admin-${runId}`,
           action: 'PLAN_PRICE_CHANGED',
           resourceType: 'plan',
           resourceId: planId,
           requestId,
-          beforeSummary: { priceMinor: 100 },
-          afterSummary: { priceMinor: updatedPlan.priceMinor },
           ip: '203.0.113.42',
-        }),
+        },
+        async ({ transaction, setBeforeSummary, setAfterSummary }) => {
+          setBeforeSummary({ priceMinor: 100 });
+          const updatedPlan = await transaction.plan.update({
+            where: { id: planId },
+            data: { priceMinor: 200 },
+          });
+          setAfterSummary({ priceMinor: updatedPlan.priceMinor });
+          return updatedPlan;
+        },
       ),
     ).rejects.toThrow();
 
@@ -120,25 +127,27 @@ describe('AuditService audited transactions', () => {
   it('commits the business update and audit row together', async () => {
     const requestId = `${requestIdPrefix}-commit`;
 
-    const updatedPlan = await service.executeAuditedMutation(
-      async (transaction) =>
-        transaction.plan.update({
-          where: { id: planId },
-          data: { priceMinor: 300 },
-        }),
-      (result) => ({
+    const updatedPlan = await service.runInAuditedTransaction(
+      {
         adminUserId,
         action: 'PLAN_PRICE_CHANGED',
         resourceType: 'plan',
         resourceId: planId,
         requestId,
-        beforeSummary: { priceMinor: 100 },
-        afterSummary: {
+        ip: '203.0.113.42',
+      },
+      async ({ transaction, setBeforeSummary, setAfterSummary }) => {
+        setBeforeSummary({ priceMinor: 100 });
+        const result = await transaction.plan.update({
+          where: { id: planId },
+          data: { priceMinor: 300 },
+        });
+        setAfterSummary({
           priceMinor: result.priceMinor,
           password: 'must-not-be-stored',
-        },
-        ip: '203.0.113.42',
-      }),
+        });
+        return result;
+      },
     );
 
     expect(updatedPlan.priceMinor).toBe(300);

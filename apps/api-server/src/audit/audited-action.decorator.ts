@@ -7,7 +7,6 @@ export interface AuditRequest {
   params?: Record<string, string | undefined>;
   headers?: Record<string, string | string[] | undefined>;
   ip?: string;
-  socket?: { remoteAddress?: string };
   user?: {
     sub: string;
     role: string;
@@ -34,8 +33,8 @@ export interface AuditedActionOptions {
 
 /**
  * Adds post-handler observation audit metadata. Sensitive database mutations
- * must use AuditService.executeAuditedMutation so the business write and audit
- * row share one transaction.
+ * must use AuditService.runInAuditedTransaction. This decorator does not make
+ * handler database writes atomic with the audit observation.
  */
 export const AuditedAction = (
   options: AuditedActionOptions,

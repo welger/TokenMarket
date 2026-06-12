@@ -8,6 +8,10 @@ import { PrismaService } from '../common/prisma/prisma.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 
 const MAX_SUMMARY_DEPTH = 12;
+const MAX_SUMMARY_STRING_LENGTH = 1024;
+const MAX_SUMMARY_COLLECTION_ITEMS = 50;
+const MAX_SUMMARY_JSON_BYTES = 16 * 1024;
+const TRUNCATED = '[TRUNCATED]';
 
 export interface AuditRecordInput {
   adminUserId: string;
@@ -20,9 +24,11 @@ export interface AuditRecordInput {
   ip?: string;
 }
 
-export type AuditInputFactory<TResult> = (
-  result: TResult,
-) => AuditRecordInput;
+export interface AuditedTransactionContext {
+  transaction: Prisma.TransactionClient;
+  setBeforeSummary(value: unknown): void;
+  setAfterSummary(value: unknown): void;
+}
 
 @Injectable()
 export class AuditService {
@@ -32,12 +38,14 @@ export class AuditService {
     private readonly prisma: PrismaService,
     configService: ConfigService<EnvironmentVariables, true>,
   ) {
-    this.ipHashKey = configService.get('API_KEY_PEPPER', { infer: true });
+    this.ipHashKey = configService.get('AUDIT_IP_HASH_SECRET', {
+      infer: true,
+    });
   }
 
   /**
    * Writes an audit observation without a business mutation transaction.
-   * Sensitive writes must use executeAuditedMutation.
+   * Sensitive writes must use runInAuditedTransaction.
    */
   async record(input: AuditRecordInput): Promise<void> {
     await this.prisma.auditLog.create({
@@ -48,23 +56,33 @@ export class AuditService {
   /**
    * Runs a sensitive business mutation and its audit insert in one Prisma
    * transaction. Any mutation, audit construction, or audit insert failure
-   * rolls back all writes performed through the provided transaction client.
+   * rolls back the transaction. Every database read and write in the callback
+   * must use context.transaction; injecting PrismaService into the caller
+   * would bypass this guarantee.
    */
-  executeAuditedMutation<TResult>(
-    mutation: (transaction: Prisma.TransactionClient) => Promise<TResult>,
-    auditInput:
-      | AuditRecordInput
-      | AuditInputFactory<TResult>,
+  runInAuditedTransaction<TResult>(
+    auditInput: AuditRecordInput,
+    mutation: (context: AuditedTransactionContext) => Promise<TResult>,
   ): Promise<TResult> {
     return this.prisma.$transaction(async (transaction) => {
-      const result = await mutation(transaction);
-      const input =
-        typeof auditInput === 'function'
-          ? auditInput(result)
-          : auditInput;
+      let beforeSummary = auditInput.beforeSummary;
+      let afterSummary = auditInput.afterSummary;
+      const result = await mutation({
+        transaction,
+        setBeforeSummary: (value) => {
+          beforeSummary = value;
+        },
+        setAfterSummary: (value) => {
+          afterSummary = value;
+        },
+      });
 
       await transaction.auditLog.create({
-        data: this.buildAuditData(input),
+        data: this.buildAuditData({
+          ...auditInput,
+          beforeSummary,
+          afterSummary,
+        }),
       });
 
       return result;
@@ -83,11 +101,11 @@ export class AuditService {
       beforeSummary:
         input.beforeSummary === undefined
           ? undefined
-          : (this.sanitize(input.beforeSummary) as Prisma.InputJsonValue),
+          : this.sanitizeSummary(input.beforeSummary),
       afterSummary:
         input.afterSummary === undefined
           ? undefined
-          : (this.sanitize(input.afterSummary) as Prisma.InputJsonValue),
+          : this.sanitizeSummary(input.afterSummary),
       ipHash: input.ip ? this.hashIp(input.ip) : undefined,
     };
   }
@@ -104,16 +122,25 @@ export class AuditService {
     seen = new WeakSet<object>(),
   ): unknown {
     if (depth > MAX_SUMMARY_DEPTH) {
-      return '[TRUNCATED]';
+      return TRUNCATED;
     }
 
     if (
       value === null ||
-      typeof value === 'string' ||
       typeof value === 'number' ||
       typeof value === 'boolean'
     ) {
       return value;
+    }
+
+    if (typeof value === 'string') {
+      if (value.length <= MAX_SUMMARY_STRING_LENGTH) {
+        return value;
+      }
+      return `${value.slice(
+        0,
+        MAX_SUMMARY_STRING_LENGTH - TRUNCATED.length,
+      )}${TRUNCATED}`;
     }
 
     if (typeof value === 'bigint') {
@@ -134,17 +161,42 @@ export class AuditService {
     seen.add(value);
 
     if (Array.isArray(value)) {
-      return value.map((item) => this.sanitize(item, depth + 1, seen));
+      const items = value
+        .slice(0, MAX_SUMMARY_COLLECTION_ITEMS - 1)
+        .map((item) => this.sanitize(item, depth + 1, seen));
+      if (value.length > MAX_SUMMARY_COLLECTION_ITEMS - 1) {
+        items.push(TRUNCATED);
+      }
+      return items;
     }
 
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([key]) => !this.isSensitiveKey(key))
-        .map(([key, item]) => [
-          key,
-          this.sanitize(item, depth + 1, seen),
-        ]),
+    const safeEntries = Object.entries(value).filter(
+      ([key]) => !this.isSensitiveKey(key),
     );
+    const entries = safeEntries
+      .slice(0, MAX_SUMMARY_COLLECTION_ITEMS - 1)
+      .map(([key, item]) => [
+        key,
+        this.sanitize(item, depth + 1, seen),
+      ]);
+    if (safeEntries.length > MAX_SUMMARY_COLLECTION_ITEMS - 1) {
+      entries.push(['__truncated__', true]);
+    }
+
+    return Object.fromEntries(entries);
+  }
+
+  private sanitizeSummary(value: unknown): Prisma.InputJsonValue {
+    const sanitized = this.sanitize(value) as Prisma.InputJsonValue;
+    const serialized = JSON.stringify(sanitized);
+    if (
+      serialized !== undefined &&
+      Buffer.byteLength(serialized, 'utf8') <= MAX_SUMMARY_JSON_BYTES
+    ) {
+      return sanitized;
+    }
+
+    return { __truncated__: true };
   }
 
   private isSensitiveKey(key: string): boolean {

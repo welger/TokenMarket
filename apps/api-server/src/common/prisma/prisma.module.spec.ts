@@ -13,6 +13,8 @@ Object.assign(process.env, {
   REDIS_URL: 'redis://127.0.0.1:6379',
   JWT_ACCESS_SECRET: 'a'.repeat(32),
   API_KEY_PEPPER: 'b'.repeat(32),
+  AUDIT_IP_HASH_SECRET: 'c'.repeat(32),
+  ADMIN_LOGIN_THROTTLE_SECRET: 'd'.repeat(32),
   UPSTREAM_BASE_URL: 'http://127.0.0.1:4010/v1',
   PAYMENT_DRIVER: 'test',
 });

@@ -148,6 +148,18 @@ model AdminUser {
   @@index([role, status])
 }
 
+model AdminLoginThrottle {
+  keyHash        String    @id @db.VarChar(64)
+  failureCount   Int       @default(0)
+  blockedUntil   DateTime?
+  leaseToken     String?
+  leaseExpiresAt DateTime?
+  expiresAt      DateTime
+  updatedAt      DateTime  @updatedAt
+
+  @@index([expiresAt])
+}
+
 model Provider {
   id                String         @id @default(cuid())
   name              String         @unique

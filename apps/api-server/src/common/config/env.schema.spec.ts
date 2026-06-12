@@ -6,6 +6,8 @@ const validEnv = {
   REDIS_URL: 'redis://127.0.0.1:6379',
   JWT_ACCESS_SECRET: 'a'.repeat(32),
   API_KEY_PEPPER: 'b'.repeat(32),
+  AUDIT_IP_HASH_SECRET: 'c'.repeat(32),
+  ADMIN_LOGIN_THROTTLE_SECRET: 'd'.repeat(32),
   UPSTREAM_BASE_URL: 'http://127.0.0.1:4010/v1',
   PAYMENT_DRIVER: 'test',
 };
@@ -29,6 +31,8 @@ describe('validateEnv', () => {
         ...validEnv,
         JWT_ACCESS_SECRET: 'short',
         API_KEY_PEPPER: 'short',
+        AUDIT_IP_HASH_SECRET: 'short',
+        ADMIN_LOGIN_THROTTLE_SECRET: 'short',
       }),
     ).toThrow();
   });
@@ -63,10 +67,14 @@ describe('validateEnv', () => {
       ...validEnv,
       JWT_ACCESS_SECRET: `  ${'a'.repeat(32)}  `,
       API_KEY_PEPPER: `  ${'b'.repeat(32)}  `,
+      AUDIT_IP_HASH_SECRET: `  ${'c'.repeat(32)}  `,
+      ADMIN_LOGIN_THROTTLE_SECRET: `  ${'d'.repeat(32)}  `,
     });
 
     expect(validated.JWT_ACCESS_SECRET).toBe('a'.repeat(32));
     expect(validated.API_KEY_PEPPER).toBe('b'.repeat(32));
+    expect(validated.AUDIT_IP_HASH_SECRET).toBe('c'.repeat(32));
+    expect(validated.ADMIN_LOGIN_THROTTLE_SECRET).toBe('d'.repeat(32));
   });
 
   it('rejects whitespace-only secrets', () => {
@@ -74,10 +82,12 @@ describe('validateEnv', () => {
       ...validEnv,
       JWT_ACCESS_SECRET: ' '.repeat(64),
       API_KEY_PEPPER: '\t'.repeat(64),
+      AUDIT_IP_HASH_SECRET: '\n'.repeat(64),
+      ADMIN_LOGIN_THROTTLE_SECRET: ' '.repeat(64),
     });
 
     expect(error.message).toBe(
-      'Invalid environment configuration: JWT_ACCESS_SECRET, API_KEY_PEPPER',
+      'Invalid environment configuration: JWT_ACCESS_SECRET, API_KEY_PEPPER, AUDIT_IP_HASH_SECRET, ADMIN_LOGIN_THROTTLE_SECRET',
     );
   });
 
@@ -103,6 +113,22 @@ describe('validateEnv', () => {
     expect(() =>
       validateEnv({ ...validEnv, PAYMENT_DRIVER: 'unsupported' }),
     ).toThrow();
+  });
+
+  it.each([-1, 6, 1.5])('rejects TRUST_PROXY_HOPS=%s', (value) => {
+    expect(() =>
+      validateEnv({ ...validEnv, TRUST_PROXY_HOPS: value }),
+    ).toThrow('TRUST_PROXY_HOPS');
+  });
+
+  it('defaults TRUST_PROXY_HOPS to zero', () => {
+    expect(validateEnv(validEnv).TRUST_PROXY_HOPS).toBe(0);
+  });
+
+  it('accepts TRUST_PROXY_HOPS from zero through five', () => {
+    expect(
+      validateEnv({ ...validEnv, TRUST_PROXY_HOPS: '5' }),
+    ).toMatchObject({ TRUST_PROXY_HOPS: 5 });
   });
 
   it('rejects the test payment driver in production', () => {

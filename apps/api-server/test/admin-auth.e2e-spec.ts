@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 
 import {
   Body,
@@ -14,11 +14,14 @@ import { Test } from '@nestjs/testing';
 import { hash, argon2id } from 'argon2';
 import request from 'supertest';
 
+import { AuditedAction } from '../src/audit/audited-action.decorator.js';
 import { AuditService } from '../src/audit/audit.service.js';
+import { AdminLoginThrottleService } from '../src/auth/admin-login-throttle.service.js';
 import { AdminJwtGuard } from '../src/auth/admin-jwt.guard.js';
 import { Roles } from '../src/auth/roles.decorator.js';
 import { RolesGuard } from '../src/auth/roles.guard.js';
 import { PrismaService } from '../src/common/prisma/prisma.service.js';
+import { configureTrustedProxy } from '../src/common/http/configure-trusted-proxy.js';
 import {
   AdminRole,
   AdminUserStatus,
@@ -28,6 +31,8 @@ import {
 
 type AuthenticatedRequest = {
   user: { sub: string; role: AdminRole; type: 'admin' };
+  ip: string;
+  headers?: Record<string, string | string[] | undefined>;
 };
 
 @Controller('admin/models')
@@ -37,6 +42,19 @@ class ModelsProbeController {
   @Roles(AdminRole.OWNER, AdminRole.OPERATOR)
   enter(): { allowed: true } {
     return { allowed: true };
+  }
+
+  @Get('observed/:modelId')
+  @Roles(AdminRole.OWNER)
+  @AuditedAction({
+    action: 'MODEL_VIEWED',
+    resourceType: 'model',
+    resourceId: ({ request: httpRequest }) =>
+      String(httpRequest.params?.modelId),
+    afterSummary: ({ result }) => result,
+  })
+  observe(@Param('modelId') modelId: string): { modelId: string } {
+    return { modelId };
   }
 }
 
@@ -58,8 +76,16 @@ class PlansProbeController {
     },
     @Req() httpRequest: AuthenticatedRequest,
   ): Promise<Record<string, unknown>> {
-    return this.auditService.executeAuditedMutation(
-      async (transaction) => {
+    return this.auditService.runInAuditedTransaction(
+      {
+        adminUserId: httpRequest.user.sub,
+        action: 'PLAN_PRICE_CHANGED',
+        resourceType: 'plan',
+        resourceId: body.planId,
+        requestId: getHeader(httpRequest, 'x-request-id'),
+        ip: httpRequest.ip,
+      },
+      async ({ transaction, setBeforeSummary, setAfterSummary }) => {
         const before = await transaction.plan.findUniqueOrThrow({
           where: { id: body.planId },
         });
@@ -68,26 +94,18 @@ class PlansProbeController {
           data: { priceMinor: body.priceMinor },
         });
 
-        return { before, updated };
-      },
-      ({ before, updated }) => ({
-        adminUserId: httpRequest.user.sub,
-        action: 'PLAN_PRICE_CHANGED',
-        resourceType: 'plan',
-        resourceId: body.planId,
-        requestId: getHeader(httpRequest, 'x-request-id'),
-        beforeSummary: {
+        setBeforeSummary({
           priceMinor: before.priceMinor,
           clientSummary: body.beforeSummary,
           password: body.password,
           apiKey: body.apiKey,
-        },
-        afterSummary: {
+        });
+        setAfterSummary({
           priceMinor: updated.priceMinor,
           token: 'must-not-be-stored',
-        },
-        ip: getHeader(httpRequest, 'x-forwarded-for'),
-      }),
+        });
+        return { before, updated };
+      },
     ).then(({ updated }) => ({
       planId: updated.id,
       priceMinor: updated.priceMinor,
@@ -102,20 +120,22 @@ class PlansProbeController {
     @Body() body: { priceMinor: number },
     @Req() httpRequest: AuthenticatedRequest,
   ): Promise<unknown> {
-    return this.auditService.executeAuditedMutation(
-      (transaction) =>
-        transaction.plan.update({
-          where: { id: planId },
-          data: { priceMinor: body.priceMinor },
-        }),
-      (updated) => ({
+    return this.auditService.runInAuditedTransaction(
+      {
         adminUserId: `missing-${httpRequest.user.sub}`,
         action: 'PLAN_PRICE_CHANGED',
         resourceType: 'plan',
         resourceId: planId,
         requestId: `failed-${planId}`,
-        afterSummary: { priceMinor: updated.priceMinor },
-      }),
+      },
+      ({ transaction, setAfterSummary }) =>
+        transaction.plan.update({
+          where: { id: planId },
+          data: { priceMinor: body.priceMinor },
+        }).then((updated) => {
+          setAfterSummary({ priceMinor: updated.priceMinor });
+          return updated;
+        }),
     );
   }
 }
@@ -133,35 +153,53 @@ function getHeader(
 describe('admin authentication, RBAC and audit (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let throttle: AdminLoginThrottleService;
   const runId = randomUUID();
   const password = `Local-only-${runId}`;
   const plainIp = '203.0.113.42';
+  const loginIp = '198.51.100.24';
   const usernames = Object.values(AdminRole).map(
     (role) => `task4-${role.toLowerCase()}-${runId}`,
   );
   const disabledUsername = `task4-disabled-${runId}`;
   const createdAdminIds: string[] = [];
+  const throttledUsernames: string[] = [];
+  const environmentDefaults = {
+    NODE_ENV: 'test',
+    DATABASE_URL:
+      'postgresql://gateway:gateway_local@127.0.0.1:5432/gateway',
+    REDIS_URL: 'redis://127.0.0.1:6379',
+    JWT_ACCESS_SECRET: 'jwt-test-secret-not-for-production-123456',
+    API_KEY_PEPPER: 'api-key-test-pepper-not-for-production-123',
+    AUDIT_IP_HASH_SECRET:
+      'audit-ip-test-secret-not-for-production-123',
+    ADMIN_LOGIN_THROTTLE_SECRET:
+      'login-throttle-test-secret-not-for-production',
+    TRUST_PROXY_HOPS: '1',
+    UPSTREAM_BASE_URL: 'http://127.0.0.1:4010/v1',
+    PAYMENT_DRIVER: 'test',
+  } as const;
+  const originalEnvironment = new Map<string, string | undefined>();
   let planId: string;
 
   async function loginAs(
     username: string,
     suppliedPassword = password,
   ): Promise<request.Response> {
-    return request(app.getHttpServer()).post('/admin/auth/login').send({
-      username,
-      password: suppliedPassword,
-    });
+    return request(app.getHttpServer())
+      .post('/admin/auth/login')
+      .set('X-Forwarded-For', loginIp)
+      .send({
+        username,
+        password: suppliedPassword,
+      });
   }
 
   beforeAll(async () => {
-    process.env.NODE_ENV = 'test';
-    process.env.DATABASE_URL =
-      'postgresql://gateway:gateway_local@127.0.0.1:5432/gateway';
-    process.env.REDIS_URL = 'redis://127.0.0.1:6379';
-    process.env.JWT_ACCESS_SECRET = 'jwt-test-secret-not-for-production-123456';
-    process.env.API_KEY_PEPPER = 'audit-test-pepper-not-for-production-123';
-    process.env.UPSTREAM_BASE_URL = 'http://127.0.0.1:4010/v1';
-    process.env.PAYMENT_DRIVER = 'test';
+    for (const [key, value] of Object.entries(environmentDefaults)) {
+      originalEnvironment.set(key, process.env[key]);
+      process.env[key] ??= value;
+    }
 
     const { AppModule } = await import('../src/app.module.js');
     const { AuditModule } = await import('../src/audit/audit.module.js');
@@ -172,8 +210,10 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
     }).compile();
 
     app = testingModule.createNestApplication({ logger: false });
+    configureTrustedProxy(app, 1);
     await app.init();
     prisma = app.get(PrismaService);
+    throttle = app.get(AdminLoginThrottleService);
 
     const passwordHash = await hash(password, { type: argon2id });
     for (const role of Object.values(AdminRole)) {
@@ -218,21 +258,42 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (prisma) {
-      await prisma.auditLog.deleteMany({
-        where: { adminUserId: { in: createdAdminIds } },
-      });
-      if (planId) {
-        await prisma.auditLog.deleteMany({
-          where: { resourceType: 'plan', resourceId: planId },
-        });
-        await prisma.plan.delete({ where: { id: planId } });
+    try {
+      if (throttle) {
+        await Promise.allSettled(
+          [...new Set([
+            ...usernames,
+            disabledUsername,
+            ...throttledUsernames,
+          ])].map((username) =>
+            throttle.clearIdentity(username, loginIp),
+          ),
+        );
       }
-      await prisma.adminUser.deleteMany({
-        where: { id: { in: createdAdminIds } },
-      });
+      if (prisma) {
+        await prisma.auditLog.deleteMany({
+          where: { adminUserId: { in: createdAdminIds } },
+        });
+        if (planId) {
+          await prisma.auditLog.deleteMany({
+            where: { resourceType: 'plan', resourceId: planId },
+          });
+          await prisma.plan.delete({ where: { id: planId } });
+        }
+        await prisma.adminUser.deleteMany({
+          where: { id: { in: createdAdminIds } },
+        });
+      }
+    } finally {
+      await app?.close();
+      for (const [key, value] of originalEnvironment) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
     }
-    await app?.close();
   });
 
   it('returns 401 for anonymous access to a protected admin route', async () => {
@@ -288,6 +349,49 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
     });
   });
 
+  it('returns 429 after five failed attempts for one username and IP', async () => {
+    const username = `throttled-${runId}`;
+    throttledUsernames.push(username);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await loginAs(username, 'wrong-password').then((response) => {
+        expect(response.status).toBe(401);
+      });
+    }
+
+    await loginAs(username, 'wrong-password').then((response) => {
+      expect(response.status).toBe(429);
+    });
+
+    const keyHash = createHmac(
+      'sha256',
+      process.env.ADMIN_LOGIN_THROTTLE_SECRET!,
+    )
+      .update('admin-login-throttle:v1:')
+      .update('username')
+      .update('\0')
+      .update(username)
+      .digest('hex');
+    const storedThrottle = await prisma.adminLoginThrottle.findUniqueOrThrow({
+      where: { keyHash },
+    });
+    expect(storedThrottle.keyHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(storedThrottle)).not.toContain(username);
+    expect(storedThrottle.blockedUntil).not.toBeNull();
+  });
+
+  it('allows only one concurrent password verification per username and IP', async () => {
+    const username = `concurrent-${runId}`;
+    throttledUsernames.push(username);
+
+    const responses = await Promise.all([
+      loginAs(username, 'wrong-password'),
+      loginAs(username, 'wrong-password'),
+    ]);
+
+    expect(responses.map(({ status }) => status).sort()).toEqual([401, 429]);
+  });
+
   it('logs in an active administrator, updates lastLoginAt and issues a 15 minute admin JWT', async () => {
     const ownerUsername = usernames[0]!;
     const storedBefore = await prisma.adminUser.findUniqueOrThrow({
@@ -300,6 +404,10 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
     expect(response.body.accessToken).toEqual(expect.any(String));
 
     const [, encodedPayload] = response.body.accessToken.split('.');
+    const [encodedHeader] = response.body.accessToken.split('.');
+    const header = JSON.parse(
+      Buffer.from(encodedHeader, 'base64url').toString('utf8'),
+    ) as { alg: string };
     const payload = JSON.parse(
       Buffer.from(encodedPayload, 'base64url').toString('utf8'),
     ) as {
@@ -308,11 +416,16 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
       type: string;
       iat: number;
       exp: number;
+      iss: string;
+      aud: string;
     };
+    expect(header.alg).toBe('HS256');
     expect(payload).toMatchObject({
       sub: storedBefore.id,
       role: AdminRole.OWNER,
       type: 'admin',
+      iss: 'multi-model-api-platform',
+      aud: 'admin-console',
     });
     expect(payload.exp - payload.iat).toBe(15 * 60);
 
@@ -364,11 +477,42 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
       prisma.plan.findUniqueOrThrow({ where: { id: planId } }),
     ).resolves.toMatchObject({ priceMinor: 200 });
     expect(audit.ipHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(audit.ipHash).toBe(
+      createHmac('sha256', process.env.AUDIT_IP_HASH_SECRET!)
+        .update(`admin-audit-ip:v1:${plainIp}`)
+        .digest('hex'),
+    );
     expect(serialized).not.toContain(plainIp);
     expect(serialized).not.toContain('request-password');
     expect(serialized).not.toContain('request-api-key');
     expect(serialized).not.toContain('before-secret');
     expect(serialized).not.toContain('must-not-be-stored');
+  });
+
+  it('globally audits a route that only declares @AuditedAction', async () => {
+    const login = await loginAs(usernames[0]!);
+    const requestId = `observed-${runId}`;
+    const modelId = `model-${runId}`;
+
+    await request(app.getHttpServer())
+      .get(`/admin/models/observed/${modelId}`)
+      .set('Authorization', `Bearer ${login.body.accessToken}`)
+      .set('X-Request-Id', requestId)
+      .set('X-Forwarded-For', plainIp)
+      .expect(200, { modelId });
+
+    const audits = await prisma.auditLog.findMany({
+      where: { requestId },
+    });
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      adminUserId: createdAdminIds[0],
+      action: 'MODEL_VIEWED',
+      resourceType: 'model',
+      resourceId: modelId,
+    });
+    expect(audits[0]?.ipHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(audits[0])).not.toContain(plainIp);
   });
 
   it('rolls back the price change when the audit insert fails', async () => {

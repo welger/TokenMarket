@@ -33,7 +33,14 @@ export class AdminJwtGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<AdminJwtPayload>(token);
+      const payload = await this.jwtService.verifyAsync<AdminJwtPayload>(
+        token,
+        {
+          algorithms: ['HS256'],
+          issuer: 'multi-model-api-platform',
+          audience: 'admin-console',
+        },
+      );
 
       if (payload.type !== 'admin' || typeof payload.sub !== 'string') {
         throw new UnauthorizedException();

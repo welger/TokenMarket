@@ -10,6 +10,9 @@ export interface EnvironmentVariables {
   REDIS_URL: string;
   JWT_ACCESS_SECRET: string;
   API_KEY_PEPPER: string;
+  AUDIT_IP_HASH_SECRET: string;
+  ADMIN_LOGIN_THROTTLE_SECRET: string;
+  TRUST_PROXY_HOPS: number;
   UPSTREAM_BASE_URL: string;
   UPSTREAM_API_KEY?: string;
   UPSTREAM_DEFAULT_MODEL: string;
@@ -27,6 +30,9 @@ const envSchema = Joi.object<EnvironmentVariables>({
   REDIS_URL: Joi.string().uri({ scheme: ['redis', 'rediss'] }).required(),
   JWT_ACCESS_SECRET: Joi.string().trim().min(32).required(),
   API_KEY_PEPPER: Joi.string().trim().min(32).required(),
+  AUDIT_IP_HASH_SECRET: Joi.string().trim().min(32).required(),
+  ADMIN_LOGIN_THROTTLE_SECRET: Joi.string().trim().min(32).required(),
+  TRUST_PROXY_HOPS: Joi.number().integer().min(0).max(5).default(0),
   UPSTREAM_BASE_URL: Joi.string()
     .uri({ scheme: ['http', 'https'] })
     .required(),
