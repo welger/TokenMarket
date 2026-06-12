@@ -157,7 +157,7 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
   const runId = randomUUID();
   const password = `Local-only-${runId}`;
   const plainIp = '203.0.113.42';
-  const loginIp = '198.51.100.24';
+  const loginIps = new Map<string, string>();
   const usernames = Object.values(AdminRole).map(
     (role) => `task4-${role.toLowerCase()}-${runId}`,
   );
@@ -186,6 +186,11 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
     username: string,
     suppliedPassword = password,
   ): Promise<request.Response> {
+    const loginIp =
+      loginIps.get(username) ??
+      `198.51.100.${loginIps.size + 1}`;
+    loginIps.set(username, loginIp);
+
     return request(app.getHttpServer())
       .post('/admin/auth/login')
       .set('X-Forwarded-For', loginIp)
@@ -266,7 +271,10 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
             disabledUsername,
             ...throttledUsernames,
           ])].map((username) =>
-            throttle.clearIdentity(username, loginIp),
+            throttle.clearIdentity(
+              username,
+              loginIps.get(username) ?? '198.51.100.254',
+            ),
           ),
         );
       }
