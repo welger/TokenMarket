@@ -93,6 +93,15 @@ enum PaymentDriver {
   WECHAT
 }
 
+enum ContentPolicyMatchType {
+  KEYWORD
+  REGEX
+}
+
+enum ContentPolicyAction {
+  BLOCK
+}
+
 model User {
   id                String        @id @default(cuid())
   wechatOpenId      String?       @unique
@@ -185,6 +194,7 @@ model Model {
   upstreamModel    String
   displayName      String
   description      String
+  capabilities     String[]      @default([])
   inputUnit        BillingUnit   @default(CHARACTER)
   outputUnit       BillingUnit   @default(CHARACTER)
   contextWindow    Int
@@ -346,6 +356,7 @@ model Order {
 
 model ComplianceProfile {
   id                        String     @id @default(cuid())
+  profileKey                String     @unique @default("default")
   operatorName              String?
   customerServiceContact    String?
   complaintChannel          String?
@@ -366,6 +377,36 @@ model ComplianceProfile {
 
   @@index([productionEnabled, updatedAt])
   @@index([updatedByAdminId, updatedAt])
+}
+
+model ContentPolicyRule {
+  id        String                 @id @default(cuid())
+  name      String
+  enabled   Boolean                @default(true)
+  category  String
+  matchType ContentPolicyMatchType
+  pattern   String
+  action    ContentPolicyAction    @default(BLOCK)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  events    ContentPolicyEvent[]
+
+  @@index([enabled, category])
+  @@index([createdAt])
+}
+
+model ContentPolicyEvent {
+  id        String              @id @default(cuid())
+  ruleId    String?
+  category  String
+  action    ContentPolicyAction
+  requestId String
+  createdAt DateTime            @default(now())
+  rule      ContentPolicyRule?  @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  @@index([requestId])
+  @@index([ruleId, createdAt])
+  @@index([category, createdAt])
 }
 
 model AuditLog {

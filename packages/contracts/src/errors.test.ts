@@ -19,6 +19,10 @@ const errorCases = [
   [ErrorCode.MODEL_UNAVAILABLE, '模型暂不可用'],
   [ErrorCode.RATE_LIMITED, '请求过于频繁'],
   [ErrorCode.CONTENT_REJECTED, '请求违反内容安全规则'],
+  [
+    ErrorCode.COMPLIANCE_PROFILE_INCOMPLETE,
+    '生产环境合规资料不完整',
+  ],
   [ErrorCode.UPSTREAM_TIMEOUT, '上游模型响应超时'],
   [ErrorCode.INTERNAL_ERROR, '服务暂时不可用'],
 ] as const;

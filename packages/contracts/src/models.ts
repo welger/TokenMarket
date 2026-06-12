@@ -11,6 +11,7 @@ export interface ModelDto {
   name: string;
   displayName: string;
   description: string;
+  capabilities?: string[];
   inputUnit: BillingUnit;
   outputUnit: BillingUnit;
   contextWindow: number;
