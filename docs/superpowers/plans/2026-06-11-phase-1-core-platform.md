@@ -422,7 +422,7 @@ git commit -m "feat: manage providers models and compliance"
 - Test: `apps/api-server/src/refunds/refunds.service.spec.ts`
 - Test: `apps/api-server/src/invoices/invoices.service.spec.ts`
 
-- [ ] **Step 1: 写套餐优先级测试**
+- [x] **Step 1: 写套餐优先级测试**
 
 ```ts
 it('uses the earliest expiring applicable plan', () => {
@@ -433,22 +433,22 @@ it('uses the earliest expiring applicable plan', () => {
 });
 ```
 
-- [ ] **Step 2: 写订单状态机测试**
+- [x] **Step 2: 写订单状态机测试**
 
 ```ts
 expect(transition('PENDING_PAYMENT', 'PAY')).toBe('PAID');
 expect(() => transition('FULFILLED', 'PAY')).toThrow('INVALID_ORDER_TRANSITION');
 ```
 
-- [ ] **Step 3: 实现测试支付驱动**
+- [x] **Step 3: 实现测试支付驱动**
 
 测试驱动只接受管理员或测试环境调用，支付结果带 `driver: "test"`，接口和页面必须显示“测试支付”，不得生成真实交易号。
 
-- [ ] **Step 4: 实现幂等套餐发放**
+- [x] **Step 4: 实现幂等套餐发放**
 
 订单支付和发放在事务内执行；以 `orderId + fulfillmentType` 唯一约束阻止重复发放。
 
-- [ ] **Step 5: 实现退款和发票状态流**
+- [x] **Step 5: 实现退款和发票状态流**
 
 退款申请必须引用已支付订单；测试支付只允许测试退款。发票状态固定为 `SUBMITTED -> APPROVED -> ISSUED`，也允许 `SUBMITTED -> REJECTED`；未配置真实开票驱动时禁止进入 `ISSUED`。
 
@@ -460,7 +460,7 @@ it('does not issue an invoice without a real invoice driver', async () => {
 
 提供用户接口 `/me/orders`、`/me/refunds`、`/me/invoices` 和管理员审核接口。
 
-- [ ] **Step 6: 验证并提交**
+- [x] **Step 6: 验证并提交**
 
 Run: `pnpm --filter api-server test -- plan-selection order-state-machine refunds invoices`
 

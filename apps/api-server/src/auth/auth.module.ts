@@ -8,6 +8,7 @@ import { AdminLoginThrottleService } from './admin-login-throttle.service.js';
 import { AdminJwtGuard } from './admin-jwt.guard.js';
 import { PasswordHasher } from './password-hasher.js';
 import { RolesGuard } from './roles.guard.js';
+import { UserJwtGuard } from './user-jwt.guard.js';
 import type { EnvironmentVariables } from '../common/config/env.schema.js';
 
 @Module({
@@ -33,12 +34,14 @@ import type { EnvironmentVariables } from '../common/config/env.schema.js';
     AdminLoginThrottleService,
     PasswordHasher,
     AdminJwtGuard,
+    UserJwtGuard,
     RolesGuard,
   ],
   exports: [
     AdminAuthService,
     AdminLoginThrottleService,
     AdminJwtGuard,
+    UserJwtGuard,
     RolesGuard,
     JwtModule,
   ],

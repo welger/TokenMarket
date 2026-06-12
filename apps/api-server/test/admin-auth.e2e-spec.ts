@@ -58,7 +58,7 @@ class ModelsProbeController {
   }
 }
 
-@Controller('admin/plans')
+@Controller('admin/audit-probe/plans')
 @UseGuards(AdminJwtGuard, RolesGuard)
 class PlansProbeController {
   constructor(private readonly auditService: AuditService) {}
@@ -315,7 +315,7 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
     });
 
     await request(app.getHttpServer())
-      .post('/admin/plans')
+      .post('/admin/audit-probe/plans')
       .set('Authorization', `Bearer ${login.body.accessToken}`)
       .send({ planId, priceMinor: 200 })
       .expect(403);
@@ -449,7 +449,7 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
     const requestId = `req-${runId}`;
 
     await request(app.getHttpServer())
-      .post('/admin/plans')
+      .post('/admin/audit-probe/plans')
       .set('Authorization', `Bearer ${login.body.accessToken}`)
       .set('X-Request-Id', requestId)
       .set('X-Forwarded-For', plainIp)
@@ -530,7 +530,7 @@ describe('admin authentication, RBAC and audit (e2e)', () => {
     ).priceMinor;
 
     await request(app.getHttpServer())
-      .post(`/admin/plans/${planId}/fail-audit`)
+      .post(`/admin/audit-probe/plans/${planId}/fail-audit`)
       .set('Authorization', `Bearer ${login.body.accessToken}`)
       .send({ priceMinor: 999 })
       .expect(500);

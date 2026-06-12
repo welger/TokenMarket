@@ -7,7 +7,11 @@ import { ComplianceModule } from './compliance/compliance.module.js';
 import { validateEnv } from './common/config/env.schema.js';
 import { PrismaModule } from './common/prisma/prisma.module.js';
 import { ModelsModule } from './models/models.module.js';
+import { InvoicesModule } from './invoices/invoices.module.js';
+import { OrdersModule } from './orders/orders.module.js';
+import { PlansModule } from './plans/plans.module.js';
 import { ProvidersModule } from './providers/providers.module.js';
+import { RefundsModule } from './refunds/refunds.module.js';
 
 @Module({
   imports: [
@@ -21,6 +25,10 @@ import { ProvidersModule } from './providers/providers.module.js';
     ProvidersModule,
     ModelsModule,
     ComplianceModule,
+    PlansModule,
+    OrdersModule,
+    RefundsModule,
+    InvoicesModule,
   ],
 })
 export class AppModule {}
