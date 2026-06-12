@@ -31,7 +31,7 @@
 5. 执行 `pnpm test`。
 6. 执行 `pnpm build`。
 
-该任务不连接真实数据库或模型供应商，不配置生产凭据。
+当前 API 测试集中包含数据库完整性和事务测试，因此该任务也使用独立的 PostgreSQL 和 Redis service containers，并在测试前执行 migration。它不连接本地或生产数据库，不访问真实模型供应商，也不配置生产凭据。
 
 ### E2E
 
@@ -40,7 +40,7 @@
 - PostgreSQL 16，数据库名和账号仅用于当前 CI 任务。
 - Redis 7。
 
-任务环境变量使用固定的 CI 测试值。所有密钥类变量都只用于测试环境，不具备生产权限，也不保存到 GitHub Secrets。
+任务环境变量使用固定的 CI 测试值。所有密钥类变量都只用于测试环境，不具备生产权限，也不保存到 GitHub Secrets。Quality 和 E2E 各自拥有独立的一次性 service containers，不共享数据库状态。
 
 执行顺序：
 
