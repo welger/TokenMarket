@@ -499,7 +499,7 @@ it('returns plaintext only when creating a key', async () => {
 
 限制每用户最多 10 个活动 Key；停用后缓存立即失效；完整值不写日志和数据库。
 
-- [ ] **Step 4: 验证并提交**
+- [x] **Step 4: 验证并提交**
 
 Run: `pnpm --filter api-server test -- api-keys.service.spec.ts`
 
@@ -584,7 +584,7 @@ git commit -m "feat: proxy model calls and meter usage"
 - Create: `apps/admin-web/src/pages/CompliancePage.tsx`
 - Test: `apps/admin-web/src/pages/CompliancePage.test.tsx`
 
-- [ ] **Step 1: 写生产门槛 UI 测试**
+- [x] **Step 1: 写生产门槛 UI 测试**
 
 ```tsx
 it('shows missing required disclosures and disables production switch', async () => {
@@ -594,11 +594,11 @@ it('shows missing required disclosures and disables production switch', async ()
 });
 ```
 
-- [ ] **Step 2: 建立认证布局和 API 客户端**
+- [x] **Step 2: 建立认证布局和 API 客户端**
 
 401 时清理管理员会话并跳转登录；错误页显示平台错误码和请求 ID，不显示后端堆栈。
 
-- [ ] **Step 3: 实现模型、套餐、订单和合规页面**
+- [x] **Step 3: 实现模型、套餐、订单和合规页面**
 
 改价、退款、封禁和生产切换使用确认弹窗；表格默认按更新时间倒序；不显示供应商密钥字段。
 
