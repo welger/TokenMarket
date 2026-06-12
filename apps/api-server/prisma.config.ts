@@ -8,6 +8,7 @@ export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
     path: 'prisma/migrations',
+    seed: 'pnpm prisma:seed',
   },
   datasource: {
     url: resolvePrismaDatabaseUrl(process.env, process.argv),

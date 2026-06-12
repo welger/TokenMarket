@@ -51,13 +51,16 @@ export function CompliancePage() {
       .getComplianceProfile()
       .then((value) => {
         setProfile(value);
-        if (value) {
-          form.setFieldsValue(value);
-        }
       })
       .catch((caught: PlatformError) => setError(caught))
       .finally(() => setLoading(false));
-  }, [form]);
+  }, []);
+
+  useEffect(() => {
+    if (!loading && profile) {
+      form.setFieldsValue(profile);
+    }
+  }, [form, loading, profile]);
 
   const missingFields = useMemo(() => {
     if (!profile) {

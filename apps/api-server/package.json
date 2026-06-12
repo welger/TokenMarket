@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "prebuild": "pnpm prisma:generate",
-    "build": "nest build",
+    "build": "nest build && node -e \"require('node:fs').accessSync('dist/main.js')\"",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "pretest": "pnpm prisma:generate",
@@ -14,6 +14,9 @@
     "test:e2e": "node --no-warnings --experimental-vm-modules ./node_modules/jest/bin/jest.js --config test/jest-e2e.config.cjs",
     "pretypecheck": "pnpm prisma:generate",
     "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "lint": "pnpm typecheck",
+    "preprisma:seed": "pnpm prisma:generate",
+    "prisma:seed": "tsc -p tsconfig.seed.json && node .seed-dist/prisma/seed.js",
     "prisma:generate": "prisma generate",
     "prisma": "prisma"
   },

@@ -7,5 +7,10 @@
     "rootDir": ".",
     "types": ["jest", "node"]
   },
-  "include": ["src/**/*.ts", "src/**/*.spec.ts", "test/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.spec.ts",
+    "test/**/*.ts",
+    "prisma/**/*.ts"
+  ]
 }

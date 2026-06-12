@@ -10,7 +10,7 @@
     "removeComments": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "incremental": true,
+    "incremental": false,
     "noEmitOnError": true
   },
   "include": ["src/**/*.ts"],

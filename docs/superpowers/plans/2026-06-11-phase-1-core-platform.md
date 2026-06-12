@@ -134,7 +134,7 @@ docker compose -f infra/docker-compose.yml up -d
 
 Expected: `git status` 可用，PostgreSQL 和 Redis healthcheck 为 healthy。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add package.json pnpm-workspace.yaml tsconfig.base.json infra .env.example .gitignore
@@ -625,11 +625,11 @@ git commit -m "feat: add operations admin console"
 - Create: `apps/api-server/test/platform-flow.e2e-spec.ts`
 - Create: `docs/runbooks/local-development.md`
 
-- [ ] **Step 1: 写固定测试种子**
+- [x] **Step 1: 写固定测试种子**
 
 创建测试管理员、测试用户、测试模型、测试套餐和完整的合规资料；不得写入真实手机号、公司名或上游密钥。
 
-- [ ] **Step 2: 写完整流程测试**
+- [x] **Step 2: 写完整流程测试**
 
 测试顺序：
 
@@ -645,7 +645,7 @@ git commit -m "feat: add operations admin console"
 -> 验证订单和审计记录
 ```
 
-- [ ] **Step 3: 运行完整验证**
+- [x] **Step 3: 运行完整验证**
 
 Run:
 
@@ -658,7 +658,7 @@ pnpm --filter api-server test:e2e -- platform-flow.e2e-spec.ts
 
 Expected: 全部命令退出码为 0。
 
-- [ ] **Step 4: 人工成功标志**
+- [x] **Step 4: 人工成功标志**
 
 访问运营后台后，可以维护模型、套餐与合规资料；使用创建出的测试 Key 调用 `/v1/chat/completions` 后，额度和日志同步变化。
 
