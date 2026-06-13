@@ -64,6 +64,14 @@ interface RefundResponse {
   status?: unknown;
 }
 
+interface WechatPaymentParamsResponse {
+  nonceStr?: unknown;
+  package?: unknown;
+  paySign?: unknown;
+  signType?: unknown;
+  timeStamp?: unknown;
+}
+
 export interface UsageDashboard {
   callCount: string;
   chargedUnits: string;
@@ -94,6 +102,7 @@ export interface UserPlanRow {
 
 export interface OrderRow {
   amountText: string;
+  canPayWechat: boolean;
   createdAtText: string;
   id: string;
   orderNumber: string;
@@ -115,6 +124,14 @@ export interface RefundRow {
   id: string;
   reason: string;
   statusText: string;
+}
+
+export interface WechatPaymentParams {
+  nonceStr: string;
+  package: string;
+  paySign: string;
+  signType: 'RSA';
+  timeStamp: string;
 }
 
 export async function loadUsageDashboard(
@@ -171,6 +188,20 @@ export async function loadRefunds(
   return mapRefunds(Array.isArray(refunds) ? refunds : []);
 }
 
+export async function payWechatOrder(
+  orderId: string,
+  client: HttpClient = http,
+): Promise<void> {
+  const params = mapWechatPaymentParams(
+    await client.request<WechatPaymentParamsResponse>({
+      method: 'POST',
+      url: `/me/orders/${encodeURIComponent(orderId)}/pay-wechat`,
+    }),
+  );
+
+  await requestWechatPayment(params);
+}
+
 export function mapUsageDashboard(
   summary: UsageSummaryResponse,
   plans: UserPlanResponse[],
@@ -202,14 +233,72 @@ export function mapApiCalls(calls: ApiCallResponse[]): ApiCallRow[] {
 export function mapOrders(orders: OrderResponse[]): OrderRow[] {
   return orders.map((order) => ({
     amountText: priceText(order.amountMinor, order.currency),
+    canPayWechat:
+      order.paymentDriver === 'WECHAT' &&
+      order.status === 'PENDING_PAYMENT' &&
+      text(order.id, '').length > 0,
     createdAtText: dateText(order.createdAt),
     id: text(order.id, ''),
     orderNumber: text(order.orderNumber, '订单号待确认'),
     paymentText:
-      order.paymentDriver === 'TEST' ? '测试支付' : '支付资质准备中',
+      order.paymentDriver === 'TEST'
+        ? '测试支付'
+        : order.paymentDriver === 'WECHAT'
+          ? '微信支付'
+          : '支付方式待确认',
     planName: text(order.plan?.name, '套餐待确认'),
     statusText: orderStatusText(order.status),
   }));
+}
+
+function mapWechatPaymentParams(
+  response: WechatPaymentParamsResponse,
+): WechatPaymentParams {
+  if (
+    typeof response.timeStamp !== 'string' ||
+    typeof response.nonceStr !== 'string' ||
+    typeof response.package !== 'string' ||
+    response.signType !== 'RSA' ||
+    typeof response.paySign !== 'string' ||
+    response.timeStamp.trim().length === 0 ||
+    response.nonceStr.trim().length === 0 ||
+    response.package.trim().length === 0 ||
+    response.paySign.trim().length === 0
+  ) {
+    throw new Error('微信支付参数无效，请稍后重试');
+  }
+
+  return {
+    nonceStr: response.nonceStr.trim(),
+    package: response.package.trim(),
+    paySign: response.paySign.trim(),
+    signType: 'RSA',
+    timeStamp: response.timeStamp.trim(),
+  };
+}
+
+function requestWechatPayment(
+  params: WechatPaymentParams,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    wx.requestPayment({
+      ...params,
+      fail: (error) => {
+        const errMsg =
+          typeof error.errMsg === 'string' ? error.errMsg : '';
+        reject(
+          new Error(
+            errMsg.includes('cancel')
+              ? '支付未完成，可稍后在订单中心继续支付'
+              : '微信支付未完成，请稍后重试或联系客服',
+          ),
+        );
+      },
+      success: () => {
+        resolve();
+      },
+    });
+  });
 }
 
 export function mapInvoices(invoices: InvoiceResponse[]): InvoiceRow[] {
