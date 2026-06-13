@@ -206,7 +206,7 @@ git commit -m "feat: add usage logs and order center"
 - Create: `apps/miniapp/tests/core-flow.test.ts`
 - Create: `docs/runbooks/miniapp-preview.md`
 
-- [ ] **Step 1: 运行自动测试**
+- [x] **Step 1: 运行自动测试**
 
 Run:
 
