@@ -6,15 +6,47 @@ import { vi } from "vitest";
 import { CompliancePage } from "./CompliancePage";
 import { adminApi } from "../api/client";
 
+const { readinessFixture } = vi.hoisted(() => ({
+  readinessFixture: {
+    status: "FAIL" as const,
+    generatedAt: "2026-06-13T00:00:00.000Z",
+    summary: { pass: 1, warn: 1, fail: 1 },
+    checks: [
+      {
+        id: "compliance.operator",
+        label: "经营主体",
+        status: "FAIL" as const,
+        message: "请填写真实经营主体",
+      },
+      {
+        id: "runtime.trustedProxy",
+        label: "可信代理",
+        status: "WARN" as const,
+        message: "如生产环境位于反向代理后，请配置真实代理 CIDR",
+      },
+      {
+        id: "safety.contentRules",
+        label: "内容安全规则",
+        status: "PASS" as const,
+        message: "至少一条内容安全规则已启用",
+      },
+    ],
+  },
+}));
+
 vi.mock("../api/client", () => ({
   adminApi: {
     getComplianceProfile: vi.fn().mockResolvedValue(null),
+    getProductionReadiness: vi.fn().mockResolvedValue(readinessFixture),
   },
 }));
 
 describe("CompliancePage", () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.mocked(adminApi.getComplianceProfile).mockResolvedValue(null);
+    vi.mocked(adminApi.getProductionReadiness).mockResolvedValue(
+      readinessFixture,
+    );
   });
 
   it("shows missing required disclosures and disables production switch", async () => {
@@ -30,6 +62,23 @@ describe("CompliancePage", () => {
     expect(
       screen.getByRole("switch", { name: "生产模式" }),
     ).toBeDisabled();
+  });
+
+  it("shows production readiness checks", async () => {
+    render(
+      <MemoryRouter>
+        <AntdApp>
+          <CompliancePage />
+        </AntdApp>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("上线检查")).toBeVisible();
+    expect(screen.getByText("阻塞 1 项")).toBeVisible();
+    expect(screen.getByText("可信代理")).toBeVisible();
+    expect(
+      screen.getByText("如生产环境位于反向代理后，请配置真实代理 CIDR"),
+    ).toBeVisible();
   });
 
   it("loads an existing profile without using a disconnected form", async () => {

@@ -18,6 +18,7 @@ import {
   ContentPolicyService,
   type ContentPolicyRuleWriteInput,
 } from './content-policy.service.js';
+import { ProductionReadinessService } from './production-readiness.service.js';
 import type { AdminAuthenticatedRequest } from '../auth/admin-auth.types.js';
 import { AdminJwtGuard } from '../auth/admin-jwt.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -49,6 +50,7 @@ export class AdminComplianceController {
   constructor(
     private readonly complianceService: ComplianceService,
     private readonly contentPolicyService: ContentPolicyService,
+    private readonly productionReadinessService: ProductionReadinessService,
   ) {}
 
   @Get()
@@ -60,6 +62,17 @@ export class AdminComplianceController {
   )
   get() {
     return this.complianceService.getAdminProfile();
+  }
+
+  @Get('production-readiness')
+  @Roles(
+    AdminRole.OWNER,
+    AdminRole.OPERATOR,
+    AdminRole.SUPPORT,
+    AdminRole.AUDITOR,
+  )
+  getProductionReadiness() {
+    return this.productionReadinessService.getReadiness();
   }
 
   @Put()

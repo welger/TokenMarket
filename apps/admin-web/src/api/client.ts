@@ -79,6 +79,26 @@ export interface ComplianceProfile {
   updatedAt?: string;
 }
 
+export type ProductionReadinessStatus = "PASS" | "WARN" | "FAIL";
+
+export interface ProductionReadinessCheck {
+  id: string;
+  label: string;
+  status: ProductionReadinessStatus;
+  message: string;
+}
+
+export interface ProductionReadinessResult {
+  status: ProductionReadinessStatus;
+  generatedAt: string;
+  summary: {
+    pass: number;
+    warn: number;
+    fail: number;
+  };
+  checks: ProductionReadinessCheck[];
+}
+
 export interface ProviderRecord {
   id: string;
   name: string;
@@ -169,6 +189,11 @@ export const adminApi = {
   },
   getComplianceProfile() {
     return request<ComplianceProfile | null>("/admin/compliance");
+  },
+  getProductionReadiness() {
+    return request<ProductionReadinessResult>(
+      "/admin/compliance/production-readiness",
+    );
   },
   updateComplianceProfile(values: Partial<ComplianceProfile>) {
     return request<ComplianceProfile>("/admin/compliance", {

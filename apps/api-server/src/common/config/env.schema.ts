@@ -24,6 +24,11 @@ export interface EnvironmentVariables {
   PAYMENT_DRIVER: PaymentDriver;
   WECHAT_APP_ID?: string;
   WECHAT_APP_SECRET?: string;
+  WECHAT_PAY_MCH_ID?: string;
+  WECHAT_PAY_SERIAL_NO?: string;
+  WECHAT_PAY_PRIVATE_KEY_PATH?: string;
+  WECHAT_PAY_API_V3_KEY?: string;
+  WECHAT_PAY_NOTIFY_URL?: string;
   WECHAT_TEST_LOGIN_ENABLED: boolean;
   WECHAT_LOGIN_RATE_LIMIT_PER_MINUTE: number;
 }
@@ -94,6 +99,15 @@ const envSchema = Joi.object<EnvironmentVariables>({
     .default('test'),
   WECHAT_APP_ID: Joi.string().trim().empty('').optional(),
   WECHAT_APP_SECRET: Joi.string().trim().empty('').optional(),
+  WECHAT_PAY_MCH_ID: Joi.string().trim().empty('').optional(),
+  WECHAT_PAY_SERIAL_NO: Joi.string().trim().empty('').optional(),
+  WECHAT_PAY_PRIVATE_KEY_PATH: Joi.string().trim().empty('').optional(),
+  WECHAT_PAY_API_V3_KEY: Joi.string().trim().empty('').optional(),
+  WECHAT_PAY_NOTIFY_URL: Joi.string()
+    .trim()
+    .empty('')
+    .uri({ scheme: ['https'] })
+    .optional(),
   WECHAT_TEST_LOGIN_ENABLED: Joi.boolean().default(false),
   WECHAT_LOGIN_RATE_LIMIT_PER_MINUTE: Joi.number()
     .integer()
