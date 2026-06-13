@@ -12,6 +12,7 @@ import {
   Space,
   Spin,
   Switch,
+  Tag,
   Typography,
 } from "antd";
 import { useEffect, useMemo, useState } from "react";
@@ -20,6 +21,8 @@ import {
   adminApi,
   type ComplianceProfile,
   type PlatformError,
+  type ProductionReadinessResult,
+  type ProductionReadinessStatus,
 } from "../api/client";
 
 const requiredFields: Array<keyof ComplianceProfile> = [
@@ -41,16 +44,21 @@ export function CompliancePage() {
   const { message, modal } = AntdApp.useApp();
   const [form] = Form.useForm<ComplianceProfile>();
   const [profile, setProfile] = useState<ComplianceProfile | null>(null);
+  const [readiness, setReadiness] =
+    useState<ProductionReadinessResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [enabling, setEnabling] = useState(false);
   const [error, setError] = useState<PlatformError | null>(null);
 
   useEffect(() => {
-    adminApi
-      .getComplianceProfile()
-      .then((value) => {
-        setProfile(value);
+    Promise.all([
+      adminApi.getComplianceProfile(),
+      adminApi.getProductionReadiness(),
+    ])
+      .then(([profileValue, readinessValue]) => {
+        setProfile(profileValue);
+        setReadiness(readinessValue);
       })
       .catch((caught: PlatformError) => setError(caught))
       .finally(() => setLoading(false));
@@ -173,6 +181,8 @@ export function CompliancePage() {
         </Row>
       </Card>
 
+      {readiness && <ProductionReadinessCard readiness={readiness} />}
+
       <Card title="经营与客服">
         <Form
           form={form}
@@ -285,4 +295,79 @@ export function CompliancePage() {
       </Card>
     </Space>
   );
+}
+
+function ProductionReadinessCard({
+  readiness,
+}: {
+  readiness: ProductionReadinessResult;
+}) {
+  return (
+    <Card title="上线检查">
+      <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+        <Row gutter={[12, 12]}>
+          <Col>
+            <Tag color={statusColor(readiness.status)}>
+              {statusText(readiness.status)}
+            </Tag>
+          </Col>
+          <Col>
+            <Typography.Text strong>
+              阻塞 {readiness.summary.fail} 项
+            </Typography.Text>
+          </Col>
+          <Col>
+            <Typography.Text type="warning">
+              警告 {readiness.summary.warn} 项
+            </Typography.Text>
+          </Col>
+          <Col>
+            <Typography.Text type="success">
+              通过 {readiness.summary.pass} 项
+            </Typography.Text>
+          </Col>
+        </Row>
+        <Space orientation="vertical" size={8} style={{ width: "100%" }}>
+          {readiness.checks.map((check) => (
+            <Row
+              key={check.id}
+              align="top"
+              justify="space-between"
+              gutter={[12, 8]}
+            >
+              <Col xs={24} md={8}>
+                <Space>
+                  <Tag color={statusColor(check.status)}>
+                    {statusText(check.status)}
+                  </Tag>
+                  <Typography.Text strong>{check.label}</Typography.Text>
+                </Space>
+              </Col>
+              <Col xs={24} md={16}>
+                <Typography.Text type="secondary">
+                  {check.message}
+                </Typography.Text>
+              </Col>
+            </Row>
+          ))}
+        </Space>
+      </Space>
+    </Card>
+  );
+}
+
+function statusColor(status: ProductionReadinessStatus) {
+  return {
+    PASS: "green",
+    WARN: "gold",
+    FAIL: "red",
+  }[status];
+}
+
+function statusText(status: ProductionReadinessStatus) {
+  return {
+    PASS: "通过",
+    WARN: "警告",
+    FAIL: "阻塞",
+  }[status];
 }

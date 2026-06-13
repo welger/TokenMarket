@@ -50,6 +50,7 @@ describe('validateEnv', () => {
     ['DATABASE_URL', 'https://database.example.com'],
     ['REDIS_URL', 'https://cache.example.com'],
     ['UPSTREAM_BASE_URL', 'ftp://upstream.example.com'],
+    ['WECHAT_PAY_NOTIFY_URL', 'http://api.example.com/payments/wechat/notify'],
   ])('rejects an invalid %s', (key, value) => {
     expect(getValidationError({ ...validEnv, [key]: value }).message).toBe(
       `Invalid environment configuration: ${key}`,
@@ -244,6 +245,19 @@ describe('validateEnv', () => {
   it('allows omitted WeChat login credentials outside production', () => {
     expect(validateEnv(validEnv)).toMatchObject({
       NODE_ENV: 'development',
+    });
+  });
+
+  it('accepts HTTPS WeChat Pay notification URLs', () => {
+    expect(
+      validateEnv({
+        ...validEnv,
+        WECHAT_PAY_NOTIFY_URL:
+          'https://api.example.com/payments/wechat/notify',
+      }),
+    ).toMatchObject({
+      WECHAT_PAY_NOTIFY_URL:
+        'https://api.example.com/payments/wechat/notify',
     });
   });
 

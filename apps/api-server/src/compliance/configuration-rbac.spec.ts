@@ -18,6 +18,7 @@ describe('configuration RBAC metadata', () => {
     [AdminModelsController, 'list'],
     [ProvidersController, 'list'],
     [AdminComplianceController, 'get'],
+    [AdminComplianceController, 'getProductionReadiness'],
     [AdminComplianceController, 'listRules'],
   ])('allows every admin role to read %s.%s', (controller, method) => {
     expect(

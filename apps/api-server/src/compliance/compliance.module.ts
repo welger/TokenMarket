@@ -6,6 +6,7 @@ import {
 } from './compliance.controller.js';
 import { ComplianceService } from './compliance.service.js';
 import { ContentPolicyService } from './content-policy.service.js';
+import { ProductionReadinessService } from './production-readiness.service.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 
@@ -15,7 +16,15 @@ import { AuthModule } from '../auth/auth.module.js';
     PublicComplianceController,
     AdminComplianceController,
   ],
-  providers: [ComplianceService, ContentPolicyService],
-  exports: [ComplianceService, ContentPolicyService],
+  providers: [
+    ComplianceService,
+    ContentPolicyService,
+    ProductionReadinessService,
+  ],
+  exports: [
+    ComplianceService,
+    ContentPolicyService,
+    ProductionReadinessService,
+  ],
 })
 export class ComplianceModule {}
