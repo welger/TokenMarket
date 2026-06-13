@@ -1,5 +1,6 @@
 import {
   loadOrders,
+  payWechatOrder,
   type OrderRow,
 } from '../../services/billing';
 
@@ -8,6 +9,7 @@ type OrdersPageData = {
   hasItems: boolean;
   items: OrderRow[];
   loading: boolean;
+  payingOrderId: string;
 };
 
 export function createOrdersPageOptions(): WechatMiniprogram.Page.Options<
@@ -17,6 +19,7 @@ export function createOrdersPageOptions(): WechatMiniprogram.Page.Options<
     goRefunds(): void;
     onLoad(): Promise<void>;
     openDetail(event: WechatMiniprogram.TouchEvent<{ id?: string }>): void;
+    payWechat(event: WechatMiniprogram.TouchEvent<{ id?: string }>): Promise<void>;
     reload(): Promise<void>;
   }
 > {
@@ -26,6 +29,7 @@ export function createOrdersPageOptions(): WechatMiniprogram.Page.Options<
       hasItems: false,
       items: [],
       loading: true,
+      payingOrderId: '',
     },
     goInvoices() {
       wx.navigateTo({ url: '/pages/invoices/index' });
@@ -40,6 +44,34 @@ export function createOrdersPageOptions(): WechatMiniprogram.Page.Options<
       const id = event.currentTarget.dataset.id;
       if (typeof id === 'string' && id.length > 0) {
         wx.navigateTo({ url: `/pages/order-detail/index?id=${id}` });
+      }
+    },
+    async payWechat(event) {
+      const id = event.currentTarget.dataset.id;
+      if (
+        typeof id !== 'string' ||
+        id.length === 0 ||
+        this.data.payingOrderId === id
+      ) {
+        return;
+      }
+
+      this.setData({ payingOrderId: id });
+      try {
+        await payWechatOrder(id);
+        this.setData({ payingOrderId: '' });
+        await this.reload();
+      } catch (error) {
+        this.setData({ payingOrderId: '' });
+        wx.showModal({
+          content:
+            error instanceof Error
+              ? error.message
+              : '微信支付未完成，请稍后重试或联系客服',
+          confirmText: '知道了',
+          showCancel: false,
+          title: '支付未完成',
+        });
       }
     },
     async reload() {

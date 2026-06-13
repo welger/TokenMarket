@@ -4,7 +4,9 @@ import {
   mapOrders,
   mapRefunds,
   mapUsageDashboard,
+  payWechatOrder,
 } from '../miniprogram/services/billing';
+import { wxRequestPaymentMock } from './wx.mock';
 
 describe('billing and usage mapping', () => {
   test('maps usage summary and plan remaining quota', () => {
@@ -87,19 +89,88 @@ describe('billing and usage mapping', () => {
       {
         amountMinor: 19900,
         currency: 'CNY',
+        id: 'order_2',
         paymentDriver: 'WECHAT',
         status: 'PENDING_PAYMENT',
       },
     ]);
 
     expect(rows[0]).toMatchObject({
+      canPayWechat: false,
       paymentText: '测试支付',
       statusText: '已发放',
     });
     expect(rows[1]).toMatchObject({
-      paymentText: '支付资质准备中',
+      canPayWechat: true,
+      paymentText: '微信支付',
       statusText: '待支付',
     });
+  });
+
+  test('requests WeChat payment params and invokes wx.requestPayment', async () => {
+    const request = jest.fn().mockResolvedValue({
+      nonceStr: 'nonce-1',
+      package: 'prepay_id=wx123',
+      paySign: 'signed',
+      signType: 'RSA',
+      timeStamp: '1710000000',
+    });
+    wxRequestPaymentMock.mockImplementation((options) => {
+      options.success?.({
+        errMsg: 'requestPayment:ok',
+      } as WechatMiniprogram.GeneralCallbackResult);
+    });
+
+    await expect(
+      payWechatOrder('order_1', { request }),
+    ).resolves.toBeUndefined();
+
+    expect(request).toHaveBeenCalledWith({
+      method: 'POST',
+      url: '/me/orders/order_1/pay-wechat',
+    });
+    expect(wxRequestPaymentMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nonceStr: 'nonce-1',
+        package: 'prepay_id=wx123',
+        paySign: 'signed',
+        signType: 'RSA',
+        timeStamp: '1710000000',
+      }),
+    );
+  });
+
+  test('rejects invalid WeChat payment params before opening payment sheet', async () => {
+    const request = jest.fn().mockResolvedValue({
+      nonceStr: 'nonce-1',
+      package: 'prepay_id=wx123',
+      signType: 'RSA',
+      timeStamp: '1710000000',
+    });
+
+    await expect(
+      payWechatOrder('order_1', { request }),
+    ).rejects.toThrow('微信支付参数无效，请稍后重试');
+    expect(wxRequestPaymentMock).not.toHaveBeenCalled();
+  });
+
+  test('maps wx.requestPayment failure to a public error message', async () => {
+    const request = jest.fn().mockResolvedValue({
+      nonceStr: 'nonce-1',
+      package: 'prepay_id=wx123',
+      paySign: 'signed',
+      signType: 'RSA',
+      timeStamp: '1710000000',
+    });
+    wxRequestPaymentMock.mockImplementation((options) => {
+      options.fail?.({
+        errMsg: 'requestPayment:fail system error',
+      } as WechatMiniprogram.GeneralCallbackResult);
+    });
+
+    await expect(
+      payWechatOrder('order_1', { request }),
+    ).rejects.toThrow('微信支付未完成，请稍后重试或联系客服');
   });
 
   test('does not mark invoices issued before ISSUED status', () => {

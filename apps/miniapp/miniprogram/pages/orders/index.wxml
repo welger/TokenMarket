@@ -16,6 +16,15 @@
       <text class="catalog-row">付款：{{item.paymentText}}</text>
       <text class="catalog-row">状态：{{item.statusText}}</text>
       <text class="catalog-row">创建：{{item.createdAtText}}</text>
+      <button
+        wx:if="{{item.canPayWechat}}"
+        catchtap="payWechat"
+        class="wechat-pay-button"
+        data-id="{{item.id}}"
+        disabled="{{payingOrderId === item.id}}"
+      >
+        {{payingOrderId === item.id ? '支付中...' : '微信支付'}}
+      </button>
     </view>
   </view>
 </view>
