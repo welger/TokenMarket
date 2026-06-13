@@ -1,0 +1,18 @@
+<view class="page">
+  <text class="eyebrow">服务中心</text>
+  <text class="title">模型、套餐与接入文档</text>
+  <text class="subtitle">这里承载多模型 API 网关的服务目录，后续每个模块会继续接入真实接口数据。</text>
+
+  <view class="card-list">
+    <view
+      wx:for="{{sections}}"
+      wx:key="title"
+      class="card"
+      data-url="{{item.url}}"
+      bindtap="openSection"
+    >
+      <text class="card-title">{{item.title}}</text>
+      <text class="card-desc">{{item.desc}}</text>
+    </view>
+  </view>
+</view>

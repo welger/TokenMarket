@@ -1,0 +1,12 @@
+<view wx:if="{{plaintext}}" class="secret-mask">
+  <view class="secret-card">
+    <text class="secret-title">请立即保存 API Key</text>
+    <text class="secret-desc">完整密钥只显示这一次。关闭后平台不会再次展示明文。</text>
+    <text class="secret-value">{{plaintext}}</text>
+    <button class="secret-button" bindtap="copySecret">
+      <text wx:if="{{copied}}">已复制</text>
+      <text wx:else>复制 Key</text>
+    </button>
+    <button class="secret-secondary" bindtap="acknowledge">我已保存</button>
+  </view>
+</view>

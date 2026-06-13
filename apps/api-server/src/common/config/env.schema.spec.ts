@@ -25,6 +25,15 @@ function getValidationError(config: Record<string, unknown>): Error {
 }
 
 describe('validateEnv', () => {
+  it('rejects a missing NODE_ENV', () => {
+    const envWithoutNodeEnv: Record<string, unknown> = { ...validEnv };
+    delete envWithoutNodeEnv.NODE_ENV;
+
+    expect(() => validateEnv(envWithoutNodeEnv)).toThrow(
+      'Invalid environment configuration: NODE_ENV',
+    );
+  });
+
   it('rejects short secrets', () => {
     expect(() =>
       validateEnv({
@@ -115,14 +124,50 @@ describe('validateEnv', () => {
     ).toThrow();
   });
 
-  it.each([-1, 6, 1.5])('rejects TRUST_PROXY_HOPS=%s', (value) => {
-    expect(() =>
-      validateEnv({ ...validEnv, TRUST_PROXY_HOPS: value }),
-    ).toThrow('TRUST_PROXY_HOPS');
+  it.each([undefined, '', '   '])(
+    'defaults TRUST_PROXY_CIDRS=%p to an empty list',
+    (value) => {
+      expect(
+        validateEnv({
+          ...validEnv,
+          ...(value === undefined ? {} : { TRUST_PROXY_CIDRS: value }),
+        }),
+      ).toMatchObject({ TRUST_PROXY_CIDRS: [] });
+    },
+  );
+
+  it('accepts loopback and valid IPv4/IPv6 CIDRs', () => {
+    expect(
+      validateEnv({
+        ...validEnv,
+        TRUST_PROXY_CIDRS:
+          ' loopback, 10.0.0.0/8, 2001:db8::/32 ',
+      }),
+    ).toMatchObject({
+      TRUST_PROXY_CIDRS: [
+        'loopback',
+        '10.0.0.0/8',
+        '2001:db8::/32',
+      ],
+    });
   });
 
-  it('defaults TRUST_PROXY_HOPS to zero', () => {
-    expect(validateEnv(validEnv).TRUST_PROXY_HOPS).toBe(0);
+  it.each([
+    '203.0.113.42',
+    '203.0.113.0/33',
+    '2001:db8::/129',
+    'linklocal',
+    'loopback, private-invalid-proxy',
+  ])('rejects invalid TRUST_PROXY_CIDRS without leaking %p', (value) => {
+    const error = getValidationError({
+      ...validEnv,
+      TRUST_PROXY_CIDRS: value,
+    });
+
+    expect(error.message).toBe(
+      'Invalid environment configuration: TRUST_PROXY_CIDRS',
+    );
+    expect(error.message).not.toContain(value);
   });
 
   it('defaults gateway rate limits', () => {
@@ -130,6 +175,8 @@ describe('validateEnv', () => {
       GATEWAY_IP_RATE_LIMIT_PER_MINUTE: 120,
       GATEWAY_USER_RATE_LIMIT_PER_MINUTE: 60,
       GATEWAY_KEY_RATE_LIMIT_PER_MINUTE: 60,
+      WECHAT_LOGIN_RATE_LIMIT_PER_MINUTE: 30,
+      WECHAT_TEST_LOGIN_ENABLED: false,
     });
   });
 
@@ -141,12 +188,6 @@ describe('validateEnv', () => {
     expect(() =>
       validateEnv({ ...validEnv, [key]: value }),
     ).toThrow(String(key));
-  });
-
-  it('accepts TRUST_PROXY_HOPS from zero through five', () => {
-    expect(
-      validateEnv({ ...validEnv, TRUST_PROXY_HOPS: '5' }),
-    ).toMatchObject({ TRUST_PROXY_HOPS: 5 });
   });
 
   it('rejects the test payment driver in production', () => {
@@ -165,10 +206,83 @@ describe('validateEnv', () => {
         ...validEnv,
         NODE_ENV: 'production',
         PAYMENT_DRIVER: 'wechat',
+        WECHAT_APP_ID: 'production-placeholder-app-id',
+        WECHAT_APP_SECRET: 'production-placeholder-app-secret',
       }),
     ).toMatchObject({
       NODE_ENV: 'production',
       PAYMENT_DRIVER: 'wechat',
     });
   });
+
+  it('rejects missing WeChat login credentials in production', () => {
+    expect(() =>
+      validateEnv({
+        ...validEnv,
+        NODE_ENV: 'production',
+        PAYMENT_DRIVER: 'wechat',
+      }),
+    ).toThrow(
+      'Invalid environment configuration: WECHAT_APP_ID, WECHAT_APP_SECRET',
+    );
+  });
+
+  it('rejects whitespace-only WeChat login credentials in production', () => {
+    expect(() =>
+      validateEnv({
+        ...validEnv,
+        NODE_ENV: 'production',
+        PAYMENT_DRIVER: 'wechat',
+        WECHAT_APP_ID: '   ',
+        WECHAT_APP_SECRET: '\t',
+      }),
+    ).toThrow(
+      'Invalid environment configuration: WECHAT_APP_ID, WECHAT_APP_SECRET',
+    );
+  });
+
+  it('allows omitted WeChat login credentials outside production', () => {
+    expect(validateEnv(validEnv)).toMatchObject({
+      NODE_ENV: 'development',
+    });
+  });
+
+  it('allows explicitly enabling test login in development', () => {
+    expect(
+      validateEnv({
+        ...validEnv,
+        WECHAT_TEST_LOGIN_ENABLED: 'true',
+      }),
+    ).toMatchObject({
+      NODE_ENV: 'development',
+      WECHAT_TEST_LOGIN_ENABLED: true,
+    });
+  });
+
+  it('rejects enabling test login in production', () => {
+    expect(() =>
+      validateEnv({
+        ...validEnv,
+        NODE_ENV: 'production',
+        PAYMENT_DRIVER: 'wechat',
+        WECHAT_APP_ID: 'production-placeholder-app-id',
+        WECHAT_APP_SECRET: 'production-placeholder-app-secret',
+        WECHAT_TEST_LOGIN_ENABLED: true,
+      }),
+    ).toThrow(
+      'Invalid environment configuration: WECHAT_TEST_LOGIN_ENABLED',
+    );
+  });
+
+  it.each([0, 1001, 1.5])(
+    'rejects WECHAT_LOGIN_RATE_LIMIT_PER_MINUTE=%s',
+    (value) => {
+      expect(() =>
+        validateEnv({
+          ...validEnv,
+          WECHAT_LOGIN_RATE_LIMIT_PER_MINUTE: value,
+        }),
+      ).toThrow('WECHAT_LOGIN_RATE_LIMIT_PER_MINUTE');
+    },
+  );
 });

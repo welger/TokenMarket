@@ -1,0 +1,46 @@
+.status-row {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  padding: 24rpx 22rpx;
+}
+
+.status-mark {
+  width: 16rpx;
+  height: 16rpx;
+  margin-right: 12rpx;
+  border-radius: 50%;
+  background: #8a8f99;
+  flex: none;
+}
+
+.status-row.success .status-mark {
+  background: #07c160;
+  box-shadow: 0 0 0 8rpx rgba(7, 193, 96, 0.12);
+}
+
+.status-row.warning .status-mark {
+  background: #f5a524;
+  box-shadow: 0 0 0 8rpx rgba(245, 165, 36, 0.14);
+}
+
+.status-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #202637;
+  font-size: 25rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-arrow {
+  width: 24rpx;
+  height: 24rpx;
+  margin-left: 8rpx;
+  opacity: 0.65;
+  flex: none;
+}

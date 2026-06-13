@@ -33,7 +33,7 @@ describe('AuditService audited transactions', () => {
       API_KEY_PEPPER: 'p'.repeat(32),
       AUDIT_IP_HASH_SECRET: 'a'.repeat(32),
       ADMIN_LOGIN_THROTTLE_SECRET: 't'.repeat(32),
-      TRUST_PROXY_HOPS: 0,
+      TRUST_PROXY_CIDRS: [],
       UPSTREAM_BASE_URL: 'http://127.0.0.1:4010/v1',
       UPSTREAM_DEFAULT_MODEL: 'test-model',
       PAYMENT_DRIVER: 'test',

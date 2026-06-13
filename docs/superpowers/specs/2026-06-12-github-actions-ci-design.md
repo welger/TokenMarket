@@ -29,7 +29,7 @@
 3. 使用 `pnpm install --frozen-lockfile` 安装依赖。
 4. 执行 Prisma migration：`pnpm --filter api-server prisma migrate deploy`。
 5. 执行 `pnpm lint`。
-6. 在 `NODE_ENV=test` 下串行执行 API Jest（带 `--runInBand`），再依次执行 contracts 和 admin-web 测试。
+6. 在 `NODE_ENV=test` 下串行执行 API Jest（带 `--runInBand`），再依次执行 contracts、admin-web 和 miniapp 测试。
 7. 在 `NODE_ENV=production` 下执行 `pnpm build`。
 
 当前 API 测试集中包含数据库完整性和事务测试，因此该任务也使用独立的 PostgreSQL 和 Redis service containers，并在测试前执行 migration。它不连接本地或生产数据库，不访问真实模型供应商，也不配置生产凭据。
@@ -41,7 +41,7 @@
 - PostgreSQL 16，数据库名和账号仅用于当前 CI 任务。
 - Redis 7。
 
-任务环境变量使用固定的 CI 测试值。所有密钥类变量都只用于测试环境，不具备生产权限，也不保存到 GitHub Secrets。Quality 和 E2E 各自拥有独立的一次性 service containers，不共享数据库状态。
+任务环境变量使用固定的 CI 测试值。所有密钥类变量都只用于测试环境，不具备生产权限，也不保存到 GitHub Secrets。Quality 和 E2E 各自拥有独立的一次性 service containers，不共享数据库状态。CI 的 `TRUST_PROXY_CIDRS` 为空，因此默认不信任代理；仅 WeChat 认证 E2E 的测试应用显式使用 `loopback`。该 E2E 只接受 `WECHAT_AUTH_E2E_DATABASE_URL` 和 `WECHAT_AUTH_E2E_REDIS_URL`，启动前校验主机名必须是 `localhost` 或 `127.0.0.1`；非 CI 数据库名必须包含 `e2e`，Redis 必须使用非 0 逻辑库，CI 固定使用 `/15`，再覆盖应用使用的 `DATABASE_URL` 和 `REDIS_URL`。
 
 执行顺序：
 
@@ -97,7 +97,7 @@ concurrency:
 
 ## 验收标准
 
-1. 本地 lint、串行 API 测试、contracts 测试、admin-web 测试和生产构建全部通过。
+1. 本地 lint、串行 API 测试、contracts 测试、admin-web 测试、miniapp 测试和生产构建全部通过。
 2. 工作流 YAML 可被 GitHub 正确解析。
 3. Pull Request 页面同时显示 `Quality` 和 `E2E`。
 4. 两个任务都显示绿色成功状态。

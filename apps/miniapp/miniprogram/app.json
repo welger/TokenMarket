@@ -1,0 +1,61 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/services/index",
+    "pages/console/index",
+    "pages/profile/index",
+    "pages/api-keys/index",
+    "pages/usage/index",
+    "pages/call-logs/index",
+    "pages/orders/index",
+    "pages/order-detail/index",
+    "pages/invoices/index",
+    "pages/refunds/index",
+    "pages/models/index",
+    "pages/plans/index",
+    "pages/api-docs/index",
+    "pages/privacy/index",
+    "pages/content-safety/index",
+    "pages/support/index"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "模型网关",
+    "backgroundColor": "#f5f7fa"
+  },
+  "tabBar": {
+    "color": "#8a8f99",
+    "selectedColor": "#07C160",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "assets/tabbar/home.png",
+        "selectedIconPath": "assets/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/services/index",
+        "text": "服务",
+        "iconPath": "assets/tabbar/services.png",
+        "selectedIconPath": "assets/tabbar/services-active.png"
+      },
+      {
+        "pagePath": "pages/console/index",
+        "text": "控制台",
+        "iconPath": "assets/tabbar/console.png",
+        "selectedIconPath": "assets/tabbar/console-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "assets/tabbar/profile.png",
+        "selectedIconPath": "assets/tabbar/profile-active.png"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json"
+}

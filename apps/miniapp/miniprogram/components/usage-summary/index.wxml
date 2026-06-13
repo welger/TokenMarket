@@ -1,0 +1,29 @@
+<view class="usage-card">
+  <view wx:if="{{errorText}}" class="usage-alert">{{errorText}}</view>
+  <view wx:elif="{{!hasPlans}}" class="usage-alert">{{emptyText}}</view>
+  <view wx:if="{{!errorText}}">
+    <view class="metric-row">
+      <view class="metric main">
+        <image class="metric-icon" src="/assets/icons/usage-calls.png" mode="aspectFit" />
+        <text class="metric-label">调用次数</text>
+        <text class="metric-value">{{usage.callCount}}</text>
+      </view>
+      <view class="metric">
+        <text class="metric-label">剩余额度</text>
+        <text class="metric-value">{{usage.remainingUnits}}</text>
+      </view>
+    </view>
+    <view class="usage-divider"></view>
+    <view class="metric-row small">
+      <view class="metric">
+        <image class="metric-icon small" src="/assets/icons/usage-input.png" mode="aspectFit" />
+        <text class="metric-label">输入量</text>
+        <text class="metric-text">{{usage.inputCharacters}}</text>
+      </view>
+      <view class="metric">
+        <text class="metric-label">输出量</text>
+        <text class="metric-text">{{usage.outputCharacters}}</text>
+      </view>
+    </view>
+  </view>
+</view>

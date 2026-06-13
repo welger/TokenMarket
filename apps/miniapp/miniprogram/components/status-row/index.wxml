@@ -1,0 +1,5 @@
+<view class="status-row {{tone}}" bindtap="handleTap">
+  <view class="status-mark"></view>
+  <text class="status-title">{{title}}</text>
+  <image class="status-arrow" src="/assets/icons/right.png" mode="aspectFit" />
+</view>

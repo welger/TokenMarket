@@ -1,0 +1,18 @@
+<view class="page">
+  <text class="eyebrow">账户与合规</text>
+  <text class="title">主体信息、规则与客服</text>
+  <text class="subtitle">这里集中展示经营主体、隐私数据说明、内容安全规则和投诉入口。</text>
+
+  <view class="card-list">
+    <view
+      wx:for="{{sections}}"
+      wx:key="title"
+      class="card"
+      data-url="{{item.url}}"
+      bindtap="openSection"
+    >
+      <text class="card-title">{{item.title}}</text>
+      <text class="card-desc">{{item.desc}}</text>
+    </view>
+  </view>
+</view>

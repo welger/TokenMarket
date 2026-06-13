@@ -25,7 +25,7 @@ describe('API key lifecycle (e2e)', () => {
       'audit-ip-test-secret-not-for-production-123',
     ADMIN_LOGIN_THROTTLE_SECRET:
       'login-throttle-test-secret-not-for-production',
-    TRUST_PROXY_HOPS: '0',
+    TRUST_PROXY_CIDRS: '',
     UPSTREAM_BASE_URL: 'http://127.0.0.1:4010/v1',
     PAYMENT_DRIVER: 'test',
   } as const;

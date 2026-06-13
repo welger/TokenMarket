@@ -45,7 +45,7 @@ env:
   API_KEY_PEPPER: ci-api-key-pepper-not-for-production-123
   AUDIT_IP_HASH_SECRET: ci-audit-ip-secret-not-for-production-123
   ADMIN_LOGIN_THROTTLE_SECRET: ci-login-throttle-secret-not-for-production
-  TRUST_PROXY_HOPS: "0"
+  TRUST_PROXY_CIDRS: ""
   UPSTREAM_BASE_URL: http://127.0.0.1:4010/v1
   UPSTREAM_DEFAULT_MODEL: test-model
   PAYMENT_DRIVER: test
@@ -103,6 +103,7 @@ jobs:
           pnpm --filter api-server test --runInBand
           pnpm --filter @gateway/contracts test
           pnpm --filter @gateway/admin-web test
+          pnpm --filter miniapp test
       - name: Build
         run: pnpm build
         env:
@@ -155,9 +156,11 @@ jobs:
         run: pnpm --filter api-server test:e2e --runInBand
         env:
           NODE_ENV: test
+          WECHAT_AUTH_E2E_DATABASE_URL: postgresql://gateway:gateway_ci@127.0.0.1:5432/gateway
+          WECHAT_AUTH_E2E_REDIS_URL: redis://127.0.0.1:6379/15
 ```
 
-成功标志：文件只包含测试凭据，不引用 GitHub Secrets，不使用 `pull_request_target`，任务名称固定为 `Quality` 和 `E2E`。
+成功标志：文件只包含测试凭据，不引用 GitHub Secrets，不使用 `pull_request_target`，任务名称固定为 `Quality` 和 `E2E`。CI 的 `TRUST_PROXY_CIDRS` 保持为空，不信任任何代理。WeChat 认证 E2E 的专用连接变量只指向 `localhost` 或 `127.0.0.1`，测试应用单独使用 `loopback`。
 
 - [ ] **Step 2：检查 YAML 和敏感字段**
 
@@ -202,6 +205,7 @@ pnpm lint
 NODE_ENV=test pnpm --filter api-server test --runInBand
 NODE_ENV=test pnpm --filter @gateway/contracts test
 NODE_ENV=test pnpm --filter @gateway/admin-web test
+NODE_ENV=test pnpm --filter miniapp test
 NODE_ENV=production pnpm build
 ```
 
@@ -214,10 +218,14 @@ NODE_ENV=production pnpm build
 运行：
 
 ```bash
+WECHAT_AUTH_E2E_DATABASE_URL=postgresql://gateway:gateway_local@127.0.0.1:5432/gateway_wechat_auth_e2e \
+WECHAT_AUTH_E2E_REDIS_URL=redis://127.0.0.1:6379/15 \
 NODE_ENV=test pnpm --filter api-server test:e2e --runInBand
 ```
 
-预期：全部端到端测试串行通过，命令退出码为 `0`。
+风险：命令会连接本机专用 E2E 数据库和 Redis 逻辑库；运行前必须先创建并迁移 `gateway_wechat_auth_e2e`，不得把变量指向共享或生产资源。
+
+预期：WeChat 认证 E2E 在启动前校验连接主机名，全部端到端测试串行通过，命令退出码为 `0`。
 
 ### Task 3：提交并发布 Pull Request
 

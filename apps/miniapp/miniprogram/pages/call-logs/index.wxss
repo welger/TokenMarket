@@ -1,0 +1,9 @@
+.key-input {
+  margin-top: 28rpx;
+  padding: 22rpx;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 14rpx;
+  background: #fff;
+  color: #111827;
+  font-size: 28rpx;
+}

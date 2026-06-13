@@ -1,0 +1,8 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">订单详情</text>
+  <text class="catalog-title">订单记录</text>
+  <text class="catalog-subtitle">当前订单 ID：{{orderId}}</text>
+  <view class="catalog-card">
+    <text class="catalog-row">详细付款、发票和退款状态请在订单中心、发票记录和退款记录中查看。</text>
+  </view>
+</view>

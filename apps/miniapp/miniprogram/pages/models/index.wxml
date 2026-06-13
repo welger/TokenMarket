@@ -1,0 +1,21 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">模型列表</text>
+  <text class="catalog-title">支持的模型与计费单位</text>
+  <text class="catalog-subtitle">模型信息来自公开服务接口，停用或未披露模型不会出现在这里。</text>
+
+  <view wx:if="{{loading}}" class="catalog-empty">加载中...</view>
+  <view wx:elif="{{errorText}}" class="catalog-error">{{errorText}}</view>
+  <view wx:elif="{{!hasItems}}" class="catalog-empty">暂无可用模型</view>
+  <view wx:else class="catalog-list">
+    <view wx:for="{{items}}" wx:key="name" class="catalog-card">
+      <text class="catalog-card-title">{{item.displayName}}</text>
+      <text class="catalog-badge">{{item.statusText}}</text>
+      <text class="catalog-row">模型名：{{item.name}}</text>
+      <text class="catalog-row">能力：{{item.capabilitiesText}}</text>
+      <text class="catalog-row">{{item.billingText}}</text>
+      <text class="catalog-row">{{item.contextText}}</text>
+      <text class="catalog-row">供应商：{{item.providerText}}</text>
+      <text class="catalog-desc">{{item.description}}</text>
+    </view>
+  </view>
+</view>

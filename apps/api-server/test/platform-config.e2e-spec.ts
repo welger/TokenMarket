@@ -34,7 +34,7 @@ describe('provider, model and compliance configuration (e2e)', () => {
       'audit-ip-test-secret-not-for-production-123',
     ADMIN_LOGIN_THROTTLE_SECRET:
       'login-throttle-test-secret-not-for-production',
-    TRUST_PROXY_HOPS: '1',
+    TRUST_PROXY_CIDRS: 'loopback',
     UPSTREAM_BASE_URL: 'http://127.0.0.1:4010/v1',
     PAYMENT_DRIVER: 'test',
   } as const;
@@ -56,7 +56,7 @@ describe('provider, model and compliance configuration (e2e)', () => {
       imports: [AppModule],
     }).compile();
     app = module.createNestApplication({ logger: false });
-    configureTrustedProxy(app, 1);
+    configureTrustedProxy(app, ['loopback']);
     await app.init();
     prisma = app.get(PrismaService);
     throttle = app.get(AdminLoginThrottleService);

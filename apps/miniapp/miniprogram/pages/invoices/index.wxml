@@ -1,0 +1,16 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">发票记录</text>
+  <text class="catalog-title">发票申请和开具状态</text>
+  <text class="catalog-subtitle">只有后端返回 ISSUED 时才显示“已开具”。</text>
+
+  <view wx:if="{{loading}}" class="catalog-empty">加载中...</view>
+  <view wx:elif="{{errorText}}" class="catalog-error">{{errorText}}</view>
+  <view wx:elif="{{!hasItems}}" class="catalog-empty">暂无发票记录</view>
+  <view wx:else class="catalog-list">
+    <view wx:for="{{items}}" wx:key="id" class="catalog-card">
+      <text class="catalog-card-title">{{item.title}}</text>
+      <text class="catalog-row">状态：{{item.statusText}}</text>
+      <text class="catalog-row">提交时间：{{item.createdAtText}}</text>
+    </view>
+  </view>
+</view>

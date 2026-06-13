@@ -1,0 +1,28 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">API 文档</text>
+  <text class="catalog-title">请求地址、鉴权和示例</text>
+  <text class="catalog-subtitle">示例中的 API Key 固定脱敏，不会展示真实密钥。</text>
+
+  <view wx:if="{{errorText}}" class="catalog-error">{{errorText}}</view>
+  <view wx:elif="{{docs}}" class="catalog-list">
+    <view class="catalog-card">
+      <text class="catalog-card-title">请求地址</text>
+      <text class="catalog-row">{{docs.chatUrl}}</text>
+      <text class="catalog-row">鉴权：{{docs.authText}}</text>
+    </view>
+    <view class="catalog-card">
+      <text class="catalog-card-title">请求参数示例</text>
+      <text class="catalog-code">{{docs.requestExample}}</text>
+    </view>
+    <view class="catalog-card">
+      <text class="catalog-card-title">响应示例</text>
+      <text class="catalog-code">{{docs.responseExample}}</text>
+    </view>
+    <view class="catalog-card">
+      <text class="catalog-card-title">错误码</text>
+      <view wx:for="{{docs.errors}}" wx:key="code">
+        <text class="catalog-row">{{item.code}}：{{item.message}}</text>
+      </view>
+    </view>
+  </view>
+</view>

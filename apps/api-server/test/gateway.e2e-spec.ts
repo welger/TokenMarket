@@ -34,7 +34,7 @@ describe('model gateway (e2e)', () => {
       'audit-ip-test-secret-not-for-production-123',
     ADMIN_LOGIN_THROTTLE_SECRET:
       'login-throttle-test-secret-not-for-production',
-    TRUST_PROXY_HOPS: '0',
+    TRUST_PROXY_CIDRS: '',
     GATEWAY_IP_RATE_LIMIT_PER_MINUTE: '100',
     GATEWAY_USER_RATE_LIMIT_PER_MINUTE: '100',
     GATEWAY_KEY_RATE_LIMIT_PER_MINUTE: '6',

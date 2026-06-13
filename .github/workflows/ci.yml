@@ -23,7 +23,7 @@ env:
   API_KEY_PEPPER: ci-api-key-pepper-not-for-production-123
   AUDIT_IP_HASH_SECRET: ci-audit-ip-secret-not-for-production-123
   ADMIN_LOGIN_THROTTLE_SECRET: ci-login-throttle-secret-not-for-production
-  TRUST_PROXY_HOPS: "0"
+  TRUST_PROXY_CIDRS: ""
   UPSTREAM_BASE_URL: http://127.0.0.1:4010/v1
   UPSTREAM_DEFAULT_MODEL: test-model
   PAYMENT_DRIVER: test
@@ -81,6 +81,7 @@ jobs:
           pnpm --filter api-server test --runInBand
           pnpm --filter @gateway/contracts test
           pnpm --filter @gateway/admin-web test
+          pnpm --filter miniapp test
       - name: Build
         run: pnpm build
         env:
@@ -133,3 +134,5 @@ jobs:
         run: pnpm --filter api-server test:e2e --runInBand
         env:
           NODE_ENV: test
+          WECHAT_AUTH_E2E_DATABASE_URL: postgresql://gateway:gateway_ci@127.0.0.1:5432/gateway
+          WECHAT_AUTH_E2E_REDIS_URL: redis://127.0.0.1:6379/15

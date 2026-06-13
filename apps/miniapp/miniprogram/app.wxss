@@ -1,0 +1,134 @@
+page {
+  min-height: 100%;
+  background: #f5f7fa;
+  color: #1f2937;
+  font-family: sans-serif;
+}
+
+view,
+text,
+image,
+button {
+  box-sizing: border-box;
+}
+
+.catalog-page {
+  min-height: 100vh;
+  padding: 64rpx 40rpx calc(48rpx + env(safe-area-inset-bottom));
+  background: #fff;
+}
+
+.catalog-eyebrow {
+  display: block;
+  color: #07a84f;
+  font-size: 24rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+
+.catalog-title {
+  display: block;
+  margin-top: 14rpx;
+  color: #101827;
+  font-size: 44rpx;
+  font-weight: 800;
+  line-height: 1.22;
+}
+
+.catalog-subtitle,
+.catalog-meta,
+.catalog-desc,
+.catalog-empty {
+  display: block;
+  color: #6b7280;
+  font-size: 26rpx;
+  line-height: 1.55;
+}
+
+.catalog-subtitle {
+  margin-top: 18rpx;
+  color: #8a8f99;
+}
+
+.catalog-list {
+  margin-top: 40rpx;
+}
+
+.catalog-card {
+  padding: 30rpx 28rpx;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 18rpx;
+  background: #fbfcfd;
+}
+
+.catalog-card + .catalog-card {
+  margin-top: 22rpx;
+}
+
+.catalog-card-title {
+  display: block;
+  color: #202637;
+  font-size: 31rpx;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.catalog-badge {
+  display: inline-block;
+  margin-top: 14rpx;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  background: #dff7e8;
+  color: #07a84f;
+  font-size: 23rpx;
+  font-weight: 650;
+}
+
+.catalog-row {
+  display: block;
+  margin-top: 12rpx;
+  color: #4b5563;
+  font-size: 25rpx;
+  line-height: 1.5;
+}
+
+.catalog-empty,
+.catalog-error {
+  margin-top: 40rpx;
+  padding: 28rpx;
+  border-radius: 18rpx;
+  background: #f7f8fa;
+}
+
+.catalog-error {
+  color: #b45309;
+  font-size: 26rpx;
+  line-height: 1.5;
+}
+
+.catalog-button {
+  margin-top: 28rpx;
+  border-radius: 12rpx;
+  background: #07c160;
+  color: #fff;
+  font-size: 28rpx;
+}
+
+.catalog-button[disabled] {
+  background: #d1d5db;
+  color: #fff;
+}
+
+.catalog-code {
+  display: block;
+  margin-top: 16rpx;
+  padding: 22rpx;
+  word-break: break-all;
+  border-radius: 14rpx;
+  background: #111827;
+  color: #e5e7eb;
+  font-family: monospace;
+  font-size: 23rpx;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
