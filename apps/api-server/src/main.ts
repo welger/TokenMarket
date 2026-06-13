@@ -8,7 +8,7 @@ import type { EnvironmentVariables } from './common/config/env.schema.js';
 import { configureTrustedProxy } from './common/http/configure-trusted-proxy.js';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const configService =
     app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
 

@@ -27,6 +27,7 @@ export interface EnvironmentVariables {
   WECHAT_PAY_MCH_ID?: string;
   WECHAT_PAY_SERIAL_NO?: string;
   WECHAT_PAY_PRIVATE_KEY_PATH?: string;
+  WECHAT_PAY_PLATFORM_CERT_PATH?: string;
   WECHAT_PAY_API_V3_KEY?: string;
   WECHAT_PAY_NOTIFY_URL?: string;
   WECHAT_TEST_LOGIN_ENABLED: boolean;
@@ -102,6 +103,10 @@ const envSchema = Joi.object<EnvironmentVariables>({
   WECHAT_PAY_MCH_ID: Joi.string().trim().empty('').optional(),
   WECHAT_PAY_SERIAL_NO: Joi.string().trim().empty('').optional(),
   WECHAT_PAY_PRIVATE_KEY_PATH: Joi.string().trim().empty('').optional(),
+  WECHAT_PAY_PLATFORM_CERT_PATH: Joi.string()
+    .trim()
+    .empty('')
+    .optional(),
   WECHAT_PAY_API_V3_KEY: Joi.string().trim().empty('').optional(),
   WECHAT_PAY_NOTIFY_URL: Joi.string()
     .trim()

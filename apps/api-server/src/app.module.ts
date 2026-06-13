@@ -10,6 +10,7 @@ import { PrismaModule } from './common/prisma/prisma.module.js';
 import { ModelsModule } from './models/models.module.js';
 import { InvoicesModule } from './invoices/invoices.module.js';
 import { OrdersModule } from './orders/orders.module.js';
+import { PaymentsModule } from './payments/payments.module.js';
 import { PlansModule } from './plans/plans.module.js';
 import { ProvidersModule } from './providers/providers.module.js';
 import { RefundsModule } from './refunds/refunds.module.js';
@@ -31,6 +32,7 @@ import { UsageModule } from './usage/usage.module.js';
     ComplianceModule,
     PlansModule,
     OrdersModule,
+    PaymentsModule,
     RefundsModule,
     InvoicesModule,
     GatewayModule,
