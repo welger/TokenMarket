@@ -252,10 +252,14 @@ describe('validateEnv', () => {
     expect(
       validateEnv({
         ...validEnv,
+        WECHAT_PAY_PLATFORM_CERT_PATH:
+          '/run/secrets/wechatpay-platform.pem',
         WECHAT_PAY_NOTIFY_URL:
           'https://api.example.com/payments/wechat/notify',
       }),
     ).toMatchObject({
+      WECHAT_PAY_PLATFORM_CERT_PATH:
+        '/run/secrets/wechatpay-platform.pem',
       WECHAT_PAY_NOTIFY_URL:
         'https://api.example.com/payments/wechat/notify',
     });

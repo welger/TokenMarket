@@ -1,6 +1,8 @@
 import { jest } from '@jest/globals';
+import type { ConfigService } from '@nestjs/config';
 
 import { OrdersService } from './orders.service.js';
+import type { EnvironmentVariables } from '../common/config/env.schema.js';
 import type { PrismaService } from '../common/prisma/prisma.service.js';
 import {
   FulfillmentType,
@@ -12,7 +14,9 @@ import {
 } from '../generated/prisma/client.js';
 import type { TestPaymentDriver } from './test-payment.driver.js';
 
-function createHarness() {
+function createHarness({
+  configuredPaymentDriver = 'test',
+}: { configuredPaymentDriver?: 'test' | 'wechat' } = {}) {
   const now = new Date('2026-06-12T00:00:00.000Z');
   const plan = {
     id: 'plan_1',
@@ -37,6 +41,10 @@ function createHarness() {
     paymentDriver: PaymentDriver.TEST,
     paymentReference: null,
     plan,
+  };
+  const wechatOrder = {
+    ...order,
+    paymentDriver: PaymentDriver.WECHAT,
   };
   const fulfilledOrder = {
     ...order,
@@ -85,7 +93,17 @@ function createHarness() {
       displayLabel: '测试支付',
     }),
   } as unknown as TestPaymentDriver;
-  const service = new OrdersService(prisma, paymentDriver, () => now);
+  const config = {
+    get: jest.fn((key: keyof EnvironmentVariables) =>
+      key === 'PAYMENT_DRIVER' ? configuredPaymentDriver : undefined,
+    ),
+  } as unknown as ConfigService<EnvironmentVariables, true>;
+  const service = new OrdersService(
+    prisma,
+    paymentDriver,
+    () => now,
+    config,
+  );
 
   return {
     service,
@@ -97,6 +115,7 @@ function createHarness() {
     paymentDriver,
     plan,
     order,
+    wechatOrder,
   };
 }
 
@@ -121,6 +140,22 @@ describe('OrdersService', () => {
         amountMinor: 100,
         currency: 'CNY',
         idempotencyKey: 'idem_1',
+      }),
+      include: { plan: true },
+    });
+  });
+
+  it('creates WeChat orders when PAYMENT_DRIVER=wechat', async () => {
+    const harness = createHarness({ configuredPaymentDriver: 'wechat' });
+
+    await harness.service.create('user_1', {
+      planId: 'plan_1',
+      idempotencyKey: 'idem_1',
+    });
+
+    expect(harness.prisma.order.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        paymentDriver: PaymentDriver.WECHAT,
       }),
       include: { plan: true },
     });
@@ -163,6 +198,75 @@ describe('OrdersService', () => {
       }),
     });
     expect(harness.transaction.usageLedger.create).toHaveBeenCalled();
+  });
+
+  it('does not let test payment fulfill a WeChat order', async () => {
+    const harness = createHarness();
+    harness.transaction.order.findUnique.mockResolvedValue(
+      harness.wechatOrder,
+    );
+
+    await expect(
+      harness.service.payAndFulfill('user_1', 'order_1', {
+        isAdmin: false,
+      }),
+    ).rejects.toThrow('Test payment cannot process this order');
+    expect(harness.paymentDriver.pay).not.toHaveBeenCalled();
+    expect(harness.transaction.userPlan.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects WeChat notifications with mismatched paid amount', async () => {
+    const harness = createHarness();
+    harness.transaction.order.findUnique.mockResolvedValue(
+      harness.wechatOrder,
+    );
+
+    await expect(
+      harness.service.applyWechatPayment({
+        orderNumber: 'ord_test',
+        transactionId: '4200000001',
+        amountMinor: 1,
+        currency: 'CNY',
+      }),
+    ).rejects.toMatchObject({ code: 'PAYMENT_AMOUNT_MISMATCH' });
+    expect(harness.transaction.userPlan.create).not.toHaveBeenCalled();
+  });
+
+  it('fulfills a matching WeChat notification idempotently', async () => {
+    const harness = createHarness();
+    harness.transaction.order.findUnique.mockResolvedValue(
+      harness.wechatOrder,
+    );
+
+    await expect(
+      harness.service.applyWechatPayment({
+        orderNumber: 'ord_test',
+        transactionId: '4200000001',
+        amountMinor: 100,
+        currency: 'CNY',
+      }),
+    ).resolves.toMatchObject({
+      order: { status: OrderStatus.FULFILLED },
+      paymentLabel: '微信支付',
+    });
+
+    harness.transaction.order.findUnique.mockResolvedValue({
+      ...harness.wechatOrder,
+      status: OrderStatus.FULFILLED,
+      paymentReference: 'wechat:4200000001',
+    });
+    harness.transaction.userPlan.findUnique.mockResolvedValue({
+      id: 'user_plan_1',
+    });
+
+    await harness.service.applyWechatPayment({
+      orderNumber: 'ord_test',
+      transactionId: '4200000001',
+      amountMinor: 100,
+      currency: 'CNY',
+    });
+
+    expect(harness.transaction.userPlan.create).toHaveBeenCalledTimes(1);
   });
 
   it('returns the existing fulfillment without paying twice', async () => {

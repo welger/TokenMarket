@@ -8,7 +8,9 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
+import type { EnvironmentVariables } from '../common/config/env.schema.js';
 import { PrismaService } from '../common/prisma/prisma.service.js';
 import {
   FulfillmentType,
@@ -36,6 +38,24 @@ export interface FulfillmentResult {
   paymentLabel: string;
 }
 
+export interface WechatPaymentInput {
+  orderNumber: string;
+  transactionId: string;
+  amountMinor: number;
+  currency: string;
+}
+
+export class PaymentAmountMismatchException extends ConflictException {
+  readonly code = 'PAYMENT_AMOUNT_MISMATCH';
+
+  constructor() {
+    super({
+      code: 'PAYMENT_AMOUNT_MISMATCH',
+      message: '支付金额与订单金额不一致',
+    });
+  }
+}
+
 @Injectable()
 export class OrdersService {
   private readonly now: () => Date;
@@ -46,6 +66,8 @@ export class OrdersService {
     @Optional()
     @Inject(ORDER_CLOCK)
     clock?: () => Date,
+    @Optional()
+    private readonly config?: ConfigService<EnvironmentVariables, true>,
   ) {
     this.now = clock ?? (() => new Date());
   }
@@ -114,7 +136,7 @@ export class OrdersService {
         planId: plan.id,
         amountMinor: plan.priceMinor,
         currency: plan.currency,
-        paymentDriver: PaymentDriverName.TEST,
+        paymentDriver: this.paymentDriverForNewOrder(),
         idempotencyKey,
       },
       include: { plan: true },
@@ -155,6 +177,11 @@ export class OrdersService {
       }
       if (order.status !== OrderStatus.PENDING_PAYMENT) {
         throw new ConflictException('Order cannot be paid');
+      }
+      if (order.paymentDriver !== PaymentDriverName.TEST) {
+        throw new ConflictException(
+          'Test payment cannot process this order',
+        );
       }
 
       const payment = await this.testPaymentDriver.pay(order, context);
@@ -221,6 +248,112 @@ export class OrdersService {
     });
   }
 
+  applyWechatPayment(
+    input: WechatPaymentInput,
+  ): Promise<FulfillmentResult> {
+    return this.prisma.$transaction(async (transaction) => {
+      const order = await transaction.order.findUnique({
+        where: { orderNumber: input.orderNumber },
+        include: { plan: true },
+      });
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
+      if (order.paymentDriver !== PaymentDriverName.WECHAT) {
+        throw new ConflictException('Order is not a WeChat payment');
+      }
+
+      const existingUserPlan =
+        order.status === OrderStatus.FULFILLED
+          ? await transaction.userPlan.findUnique({
+              where: {
+                orderId_fulfillmentType: {
+                  orderId: order.id,
+                  fulfillmentType: FulfillmentType.PURCHASE,
+                },
+              },
+            })
+          : null;
+      if (existingUserPlan) {
+        return {
+          order,
+          userPlan: existingUserPlan,
+          paymentLabel: '微信支付',
+        };
+      }
+      if (order.status !== OrderStatus.PENDING_PAYMENT) {
+        throw new ConflictException('Order cannot be paid');
+      }
+      if (
+        order.amountMinor !== input.amountMinor ||
+        order.currency !== input.currency
+      ) {
+        throw new PaymentAmountMismatchException();
+      }
+
+      const now = this.now();
+      const paidStatus = transitionOrder(order.status, 'PAY');
+      const fulfilledStatus = transitionOrder(paidStatus, 'FULFILL');
+      const immediatelyActive =
+        order.plan.activationMode === PlanActivationMode.IMMEDIATE;
+      const expiresAt = immediatelyActive
+        ? this.addDays(now, order.plan.validityDays)
+        : null;
+      const userPlan = await transaction.userPlan.create({
+        data: {
+          userId: order.userId,
+          planId: order.planId,
+          orderId: order.id,
+          fulfillmentType: FulfillmentType.PURCHASE,
+          status: immediatelyActive
+            ? UserPlanStatus.ACTIVE
+            : UserPlanStatus.PENDING,
+          initialInputQuota: order.plan.inputQuota,
+          remainingInputQuota: order.plan.inputQuota,
+          initialOutputQuota: order.plan.outputQuota,
+          remainingOutputQuota: order.plan.outputQuota,
+          initialUnifiedQuota: order.plan.unifiedQuota,
+          remainingUnifiedQuota: order.plan.unifiedQuota,
+          activatedAt: immediatelyActive ? now : null,
+          expiresAt,
+        },
+      });
+      await transaction.usageLedger.create({
+        data: {
+          userId: order.userId,
+          userPlanId: userPlan.id,
+          type: UsageLedgerType.GRANT,
+          inputUnits: order.plan.inputQuota ?? 0n,
+          outputUnits: order.plan.outputQuota ?? 0n,
+          chargedUnits:
+            order.plan.unifiedQuota ??
+            (order.plan.inputQuota ?? 0n) +
+              (order.plan.outputQuota ?? 0n),
+          remainingInput: order.plan.inputQuota,
+          remainingOutput: order.plan.outputQuota,
+          remainingUnified: order.plan.unifiedQuota,
+          description: '订单套餐发放',
+        },
+      });
+      const updatedOrder = await transaction.order.update({
+        where: { id: order.id },
+        data: {
+          status: fulfilledStatus,
+          paymentReference: `wechat:${input.transactionId}`,
+          paidAt: now,
+          fulfilledAt: now,
+        },
+        include: { plan: true },
+      });
+
+      return {
+        order: updatedOrder,
+        userPlan,
+        paymentLabel: '微信支付',
+      };
+    });
+  }
+
   private requiredText(
     value: unknown,
     field: string,
@@ -242,5 +375,12 @@ export class OrdersService {
 
   private paymentLabel(driver: PaymentDriverName): string {
     return driver === PaymentDriverName.TEST ? '测试支付' : '微信支付';
+  }
+
+  private paymentDriverForNewOrder(): PaymentDriverName {
+    return this.config?.get('PAYMENT_DRIVER', { infer: true }) ===
+      'wechat'
+      ? PaymentDriverName.WECHAT
+      : PaymentDriverName.TEST;
   }
 }
