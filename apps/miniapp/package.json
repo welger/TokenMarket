@@ -1,0 +1,17 @@
+{
+  "name": "miniapp",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "lint": "pnpm typecheck",
+    "test": "jest --runInBand",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "jest": "^30.4.2",
+    "miniprogram-api-typings": "^5.2.1",
+    "ts-jest": "^29.4.11",
+    "typescript": "^5.9.3"
+  }
+}

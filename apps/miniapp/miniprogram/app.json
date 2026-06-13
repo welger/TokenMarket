@@ -1,0 +1,13 @@
+{
+  "pages": [
+    "pages/home/index"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "Payment",
+    "backgroundColor": "#f5f7fa"
+  },
+  "sitemapLocation": "sitemap.json"
+}

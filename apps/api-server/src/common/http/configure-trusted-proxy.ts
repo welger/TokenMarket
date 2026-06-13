@@ -6,8 +6,12 @@ type ExpressApplication = {
 
 export function configureTrustedProxy(
   app: INestApplication,
-  hops: number,
+  trustedProxyCidrs: readonly string[],
 ): void {
+  if (!Array.isArray(trustedProxyCidrs)) {
+    throw new Error('trusted proxy CIDRs must be a list');
+  }
+
   const express = app.getHttpAdapter().getInstance() as ExpressApplication;
-  express.set('trust proxy', hops);
+  express.set('trust proxy', [...trustedProxyCidrs]);
 }

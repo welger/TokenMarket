@@ -25,7 +25,7 @@
 - Create: `apps/api-server/src/auth/wechat-auth.service.ts`
 - Test: `apps/api-server/src/auth/wechat-auth.service.spec.ts`
 
-- [ ] **Step 1: 写微信身份绑定测试**
+- [x] **Step 1: 写微信身份绑定测试**
 
 ```ts
 it('returns the existing user for the same open id', async () => {
@@ -35,19 +35,19 @@ it('returns the existing user for the same open id', async () => {
 });
 ```
 
-- [ ] **Step 2: 实现登录适配器**
+- [x] **Step 2: 实现登录适配器**
 
 定义 `WechatCodeExchange` 接口；开发环境使用固定测试实现，生产环境才调用微信 `code2Session`。日志不得记录 `code`、`session_key`。
 
-- [ ] **Step 3: 实现小程序统一请求客户端**
+- [x] **Step 3: 实现小程序统一请求客户端**
 
 自动附加会话令牌和 `x-request-id`；401 时仅重试一次登录；错误提示展示公开错误信息。
 
-- [ ] **Step 4: 配置小程序单元测试**
+- [x] **Step 4: 配置小程序单元测试**
 
 `package.json` 提供 `test` 和 `typecheck` 脚本；测试环境模拟 `wx.request`、`wx.login`、`wx.setStorageSync` 和 `wx.requestPayment`，禁止测试访问真实微信接口。
 
-- [ ] **Step 5: 验证并提交**
+- [x] **Step 5: 验证并提交**
 
 Run:
 

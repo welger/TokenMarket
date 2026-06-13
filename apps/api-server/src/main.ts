@@ -14,7 +14,7 @@ async function bootstrap(): Promise<void> {
 
   configureTrustedProxy(
     app,
-    configService.get('TRUST_PROXY_HOPS', { infer: true }),
+    configService.get('TRUST_PROXY_CIDRS', { infer: true }),
   );
   app.enableShutdownHooks();
   await app.listen(configService.get('PORT', { infer: true }), '0.0.0.0');
