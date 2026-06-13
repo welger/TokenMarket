@@ -1,0 +1,21 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">订单中心</text>
+  <text class="catalog-title">订单、付款、发票和退款</text>
+  <text class="catalog-subtitle">测试支付订单会明确显示“测试支付”，不会伪造成真实付款。</text>
+  <button class="catalog-button" bindtap="goInvoices">发票记录</button>
+  <button class="catalog-button" bindtap="goRefunds">退款记录</button>
+
+  <view wx:if="{{loading}}" class="catalog-empty">加载中...</view>
+  <view wx:elif="{{errorText}}" class="catalog-error">{{errorText}}</view>
+  <view wx:elif="{{!hasItems}}" class="catalog-empty">暂无订单</view>
+  <view wx:else class="catalog-list">
+    <view wx:for="{{items}}" wx:key="id" class="catalog-card" data-id="{{item.id}}" bindtap="openDetail">
+      <text class="catalog-card-title">{{item.orderNumber}}</text>
+      <text class="catalog-row">套餐：{{item.planName}}</text>
+      <text class="catalog-row">金额：{{item.amountText}}</text>
+      <text class="catalog-row">付款：{{item.paymentText}}</text>
+      <text class="catalog-row">状态：{{item.statusText}}</text>
+      <text class="catalog-row">创建：{{item.createdAtText}}</text>
+    </view>
+  </view>
+</view>

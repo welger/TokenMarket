@@ -1,0 +1,28 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">隐私与数据说明</text>
+  <text class="catalog-title">供应商、地区、保存期限和删除方式</text>
+  <text class="catalog-subtitle">以下内容来自公开合规接口，资料未完善时会明确显示待完善。</text>
+
+  <view wx:if="{{loading}}" class="catalog-empty">加载中...</view>
+  <view wx:elif="{{errorText}}" class="catalog-error">{{errorText}}</view>
+  <view wx:elif="{{profile}}" class="catalog-list">
+    <view class="catalog-card">
+      <text class="catalog-card-title">{{profile.operatorName}}</text>
+      <text class="catalog-row">服务器地区：{{profile.serverRegion}}</text>
+      <text class="catalog-row">调用日志保存：{{profile.logRetentionText}}</text>
+      <text class="catalog-row">业务数据保存：{{profile.businessDataRetentionText}}</text>
+      <text class="catalog-row">数据导出：{{profile.dataExportMethod}}</text>
+      <text class="catalog-row">数据删除：{{profile.dataDeletionMethod}}</text>
+      <text class="catalog-row">账号注销：{{profile.accountCancellationMethod}}</text>
+    </view>
+    <view class="catalog-card">
+      <text class="catalog-card-title">模型供应商披露</text>
+      <view wx:if="{{!profile.hasProviderRows}}">
+        <text class="catalog-row">模型供应商待完善</text>
+      </view>
+      <view wx:else wx:for="{{profile.providerRows}}" wx:key="name">
+        <text class="catalog-row">{{item.name}} / {{item.region}} / {{item.purpose}}</text>
+      </view>
+    </view>
+  </view>
+</view>

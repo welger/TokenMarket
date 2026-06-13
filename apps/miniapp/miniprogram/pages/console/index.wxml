@@ -1,0 +1,18 @@
+<view class="page">
+  <text class="eyebrow">开发控制台</text>
+  <text class="title">密钥、用量与订单</text>
+  <text class="subtitle">这里是网站控制台的简化入口，敏感操作会在接入真实接口后保留二次确认。</text>
+
+  <view class="card-list">
+    <view
+      wx:for="{{sections}}"
+      wx:key="title"
+      class="card"
+      data-url="{{item.url}}"
+      bindtap="openSection"
+    >
+      <text class="card-title">{{item.title}}</text>
+      <text class="card-desc">{{item.desc}}</text>
+    </view>
+  </view>
+</view>

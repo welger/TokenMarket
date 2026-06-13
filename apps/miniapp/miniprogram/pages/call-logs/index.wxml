@@ -1,0 +1,25 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">调用日志</text>
+  <text class="catalog-title">请求 ID、模型、状态和耗时</text>
+  <text class="catalog-subtitle">日志不展示提示词、响应内容或明文 API Key。</text>
+  <input
+    class="key-input"
+    placeholder="按模型筛选"
+    value="{{filterModel}}"
+    bindinput="onFilterInput"
+  />
+
+  <view wx:if="{{loading}}" class="catalog-empty">加载中...</view>
+  <view wx:elif="{{errorText}}" class="catalog-error">{{errorText}}</view>
+  <view wx:elif="{{!hasItems}}" class="catalog-empty">暂无调用日志</view>
+  <view wx:else class="catalog-list">
+    <view wx:for="{{visibleItems}}" wx:key="requestId" class="catalog-card">
+      <text class="catalog-card-title">{{item.requestId}}</text>
+      <text class="catalog-row">模型：{{item.modelName}}</text>
+      <text class="catalog-row">状态码：{{item.httpStatusText}}</text>
+      <text class="catalog-row">字符量：{{item.charactersText}}，计费 {{item.chargedUnits}}</text>
+      <text class="catalog-row">耗时：{{item.durationText}}</text>
+      <text class="catalog-row">时间：{{item.createdAtText}}</text>
+    </view>
+  </view>
+</view>

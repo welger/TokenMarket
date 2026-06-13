@@ -1,3 +1,7 @@
 {
-  "navigationBarTitleText": "Home"
+  "navigationBarTitleText": "模型网关",
+  "usingComponents": {
+    "status-row": "../../components/status-row/index",
+    "usage-summary": "../../components/usage-summary/index"
+  }
 }

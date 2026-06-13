@@ -1,0 +1,16 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">内容安全规则</text>
+  <text class="catalog-title">禁止违法、诈骗、攻击、侵权和批量滥用</text>
+  <text class="catalog-subtitle">这里只展示公开规则分类和处置方式，不暴露具体匹配模式。</text>
+
+  <view wx:if="{{loading}}" class="catalog-empty">加载中...</view>
+  <view wx:elif="{{errorText}}" class="catalog-error">{{errorText}}</view>
+  <view wx:elif="{{!hasItems}}" class="catalog-empty">内容安全规则待完善</view>
+  <view wx:else class="catalog-list">
+    <view wx:for="{{items}}" wx:key="name" class="catalog-card">
+      <text class="catalog-card-title">{{item.name}}</text>
+      <text class="catalog-row">分类：{{item.categoryText}}</text>
+      <text class="catalog-row">处置：{{item.actionText}}</text>
+    </view>
+  </view>
+</view>

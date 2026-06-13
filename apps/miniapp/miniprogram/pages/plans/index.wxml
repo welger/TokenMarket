@@ -1,0 +1,27 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">服务套餐</text>
+  <text class="catalog-title">额度、有效期和退款条件</text>
+  <text class="catalog-subtitle">购买前必须确认套餐说明、有效期、适用模型和退款条件。</text>
+
+  <view wx:if="{{loading}}" class="catalog-empty">加载中...</view>
+  <view wx:elif="{{errorText}}" class="catalog-error">{{errorText}}</view>
+  <view wx:elif="{{!hasItems}}" class="catalog-empty">暂无可用套餐</view>
+  <view wx:else class="catalog-list">
+    <view wx:for="{{items}}" wx:key="name" class="catalog-card">
+      <text class="catalog-card-title">{{item.name}}</text>
+      <text class="catalog-badge">{{item.priceText}}</text>
+      <text class="catalog-row">额度：{{item.quotaText}}</text>
+      <text class="catalog-row">{{item.validityText}}，{{item.activationText}}</text>
+      <text class="catalog-row">适用模型：{{item.applicableModelText}}</text>
+      <text class="catalog-row">退款条件：{{item.refundPolicy}}</text>
+      <text class="catalog-row">购买须知：{{item.purchaseNotice}}</text>
+      <text class="catalog-desc">{{item.description}}</text>
+    </view>
+    <checkbox-group bindchange="toggleAccepted">
+      <label class="catalog-row">
+        <checkbox value="accepted" /> 我已阅读并确认套餐、有效期和退款条件
+      </label>
+    </checkbox-group>
+    <button class="catalog-button" disabled="{{!accepted}}">确认后可继续购买</button>
+  </view>
+</view>

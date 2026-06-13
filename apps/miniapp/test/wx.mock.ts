@@ -77,6 +77,26 @@ export const wxRequestPaymentMock = jest.fn<
   [WechatMiniprogram.RequestPaymentOption]
 >();
 
+export const wxSetClipboardDataMock = jest.fn<
+  void,
+  [WechatMiniprogram.SetClipboardDataOption]
+>();
+
+export const wxShowModalMock = jest.fn<
+  void,
+  [WechatMiniprogram.ShowModalOption]
+>();
+
+export const wxSwitchTabMock = jest.fn<
+  void,
+  [WechatMiniprogram.SwitchTabOption]
+>();
+
+export const wxNavigateToMock = jest.fn<
+  void,
+  [WechatMiniprogram.NavigateToOption]
+>();
+
 export function installWxMock(): void {
   (globalThis as unknown as { wx: WechatMiniprogram.Wx }).wx = {
     getAccountInfoSync: wxGetAccountInfoSyncMock,
@@ -85,7 +105,11 @@ export function installWxMock(): void {
     removeStorageSync: wxRemoveStorageSyncMock,
     request: wxRequestMock,
     requestPayment: wxRequestPaymentMock,
+    setClipboardData: wxSetClipboardDataMock,
     setStorageSync: wxSetStorageSyncMock,
+    showModal: wxShowModalMock,
+    navigateTo: wxNavigateToMock,
+    switchTab: wxSwitchTabMock,
   } as unknown as WechatMiniprogram.Wx;
 }
 
@@ -101,6 +125,10 @@ export function resetWxMock(): void {
   wxRemoveStorageSyncMock.mockClear();
   wxSetStorageSyncMock.mockClear();
   wxRequestPaymentMock.mockReset();
+  wxSetClipboardDataMock.mockReset();
+  wxShowModalMock.mockReset();
+  wxNavigateToMock.mockReset();
+  wxSwitchTabMock.mockReset();
 }
 
 function createAccountInfo(

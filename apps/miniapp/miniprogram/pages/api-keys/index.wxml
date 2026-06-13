@@ -1,0 +1,42 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">密钥管理</text>
+  <text class="catalog-title">创建和停用 API Key</text>
+  <text class="catalog-subtitle">完整密钥只会在创建后显示一次，请保存后再关闭弹层。</text>
+
+  <view class="catalog-card">
+    <text class="catalog-card-title">创建新 Key</text>
+    <input
+      class="key-input"
+      placeholder="例如：开发环境"
+      value="{{keyName}}"
+      bindinput="onNameInput"
+    />
+    <button class="catalog-button" loading="{{creating}}" bindtap="createKey">创建 API Key</button>
+  </view>
+
+  <view wx:if="{{errorText}}" class="catalog-error">{{errorText}}</view>
+  <view wx:if="{{loading}}" class="catalog-empty">加载中...</view>
+  <view wx:elif="{{!hasItems}}" class="catalog-empty">暂无 API Key</view>
+  <view wx:else class="catalog-list">
+    <view wx:for="{{items}}" wx:key="id" class="catalog-card">
+      <text class="catalog-card-title">{{item.name}}</text>
+      <text class="catalog-row">掩码：{{item.masked}}</text>
+      <text class="catalog-row">状态：{{item.statusText}}</text>
+      <text class="catalog-row">创建时间：{{item.createdAtText}}</text>
+      <text wx:if="{{item.disabledAtText}}" class="catalog-row">停用时间：{{item.disabledAtText}}</text>
+      <button
+        wx:if="{{item.canDisable}}"
+        class="danger-button"
+        data-id="{{item.id}}"
+        bindtap="disableKey"
+      >
+        停用
+      </button>
+    </view>
+  </view>
+
+  <one-time-secret
+    plaintext="{{createdSecret}}"
+    bind:acknowledge="acknowledgeSecret"
+  />
+</view>

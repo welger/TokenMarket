@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "密钥管理",
+  "usingComponents": {
+    "one-time-secret": "../../components/one-time-secret/index"
+  }
+}

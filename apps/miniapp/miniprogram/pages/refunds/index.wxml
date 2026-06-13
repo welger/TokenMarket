@@ -1,0 +1,17 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">退款记录</text>
+  <text class="catalog-title">退款申请和处理状态</text>
+  <text class="catalog-subtitle">测试支付退款会明确显示为测试退款状态。</text>
+
+  <view wx:if="{{loading}}" class="catalog-empty">加载中...</view>
+  <view wx:elif="{{errorText}}" class="catalog-error">{{errorText}}</view>
+  <view wx:elif="{{!hasItems}}" class="catalog-empty">暂无退款记录</view>
+  <view wx:else class="catalog-list">
+    <view wx:for="{{items}}" wx:key="id" class="catalog-card">
+      <text class="catalog-card-title">{{item.amountText}}</text>
+      <text class="catalog-row">状态：{{item.statusText}}</text>
+      <text class="catalog-row">原因：{{item.reason}}</text>
+      <text class="catalog-row">提交时间：{{item.createdAtText}}</text>
+    </view>
+  </view>
+</view>

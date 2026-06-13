@@ -1,0 +1,29 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">用量统计</text>
+  <text class="catalog-title">调用次数、字符量和套餐消耗</text>
+  <text class="catalog-subtitle">统计来自当前账号真实调用记录，明细可按模型筛选查看。</text>
+
+  <view wx:if="{{loading}}" class="catalog-empty">加载中...</view>
+  <view wx:elif="{{errorText}}" class="catalog-error">{{errorText}}</view>
+  <view wx:elif="{{dashboard}}" class="catalog-list">
+    <view class="catalog-card">
+      <text class="catalog-card-title">本期汇总</text>
+      <text class="catalog-row">统计周期：{{dashboard.periodText}}</text>
+      <text class="catalog-row">调用次数：{{dashboard.callCount}}</text>
+      <text class="catalog-row">输入量：{{dashboard.inputCharacters}}</text>
+      <text class="catalog-row">输出量：{{dashboard.outputCharacters}}</text>
+      <text class="catalog-row">套餐消耗：{{dashboard.chargedUnits}}</text>
+      <text class="catalog-row">剩余额度：{{dashboard.remainingUnits}}</text>
+      <button class="catalog-button" bindtap="goCallLogs">查看调用日志</button>
+    </view>
+    <view class="catalog-card">
+      <text class="catalog-card-title">套餐消耗</text>
+      <view wx:if="{{!dashboard.hasPlanRows}}">
+        <text class="catalog-row">暂无套餐记录</text>
+      </view>
+      <view wx:else wx:for="{{dashboard.planRows}}" wx:key="name">
+        <text class="catalog-row">{{item.name}} / {{item.statusText}} / 剩余 {{item.remainingText}} / {{item.expiresAtText}}</text>
+      </view>
+    </view>
+  </view>
+</view>

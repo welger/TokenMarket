@@ -1,0 +1,24 @@
+<view class="catalog-page">
+  <text class="catalog-eyebrow">客服和投诉入口</text>
+  <text class="catalog-title">联系平台与提交投诉</text>
+  <text class="catalog-subtitle">客服与投诉信息来自合规配置，未配置时会显示待完善。</text>
+
+  <view wx:if="{{loading}}" class="catalog-empty">加载中...</view>
+  <view wx:elif="{{errorText}}" class="catalog-error">{{errorText}}</view>
+  <view wx:elif="{{profile}}" class="catalog-list">
+    <view class="catalog-card">
+      <text class="catalog-card-title">客服入口</text>
+      <text class="catalog-row">{{profile.customerServiceContact}}</text>
+    </view>
+    <view class="catalog-card">
+      <text class="catalog-card-title">投诉入口</text>
+      <text class="catalog-row">{{profile.complaintChannel}}</text>
+    </view>
+    <view class="catalog-card">
+      <text class="catalog-card-title">经营主体</text>
+      <text class="catalog-row">{{profile.operatorName}}</text>
+      <text wx:if="{{profile.isProductionReady}}" class="catalog-row">生产资料已启用</text>
+      <text wx:else class="catalog-row">资料待完善，当前不可正式购买</text>
+    </view>
+  </view>
+</view>
