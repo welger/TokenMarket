@@ -21,7 +21,7 @@
       <view wx:if="{{!dashboard.hasPlanRows}}">
         <text class="catalog-row">暂无套餐记录</text>
       </view>
-      <view wx:else wx:for="{{dashboard.planRows}}" wx:key="name">
+      <view wx:if="{{dashboard.hasPlanRows}}" wx:for="{{dashboard.planRows}}" wx:key="name">
         <text class="catalog-row">{{item.name}} / {{item.statusText}} / 剩余 {{item.remainingText}} / {{item.expiresAtText}}</text>
       </view>
     </view>

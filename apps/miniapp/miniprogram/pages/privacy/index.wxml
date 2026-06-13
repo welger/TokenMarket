@@ -20,7 +20,7 @@
       <view wx:if="{{!profile.hasProviderRows}}">
         <text class="catalog-row">模型供应商待完善</text>
       </view>
-      <view wx:else wx:for="{{profile.providerRows}}" wx:key="name">
+      <view wx:if="{{profile.hasProviderRows}}" wx:for="{{profile.providerRows}}" wx:key="name">
         <text class="catalog-row">{{item.name}} / {{item.region}} / {{item.purpose}}</text>
       </view>
     </view>

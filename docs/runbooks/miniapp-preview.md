@@ -76,3 +76,11 @@ pnpm --filter api-server test:e2e
 - 首页视觉接近参考图。
 - 375px 和 390px 宽度下均无横向滚动。
 - 骨架屏、空状态、失败状态都能正常展示。
+
+## 2026-06-13 本地验收记录
+
+- 微信开发者工具：Stable v2.01.2510290。
+- 375px 截图：`artifacts/miniapp-preview/miniapp-375px-window-20260613-211751.png`。
+- 390px 截图：`artifacts/miniapp-preview/miniapp-390px-window-20260613-211751.png`。
+- 验收结论：两档宽度首页可渲染，底部 Tab 和安全区正常；`Problems` 为 0。
+- 限制：当前使用 `touristappid`，只能做本地模拟器验收；生成真机预览二维码需要替换为真实小程序 AppID。

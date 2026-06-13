@@ -87,7 +87,7 @@ git commit -m "feat: add miniapp shell and WeChat login"
 
 首次加载显示骨架；无套餐显示“暂无可用套餐”；失败时提供“重新加载”，不展示假数据。
 
-- [ ] **Step 4: 使用微信开发者工具预览**
+- [x] **Step 4: 使用微信开发者工具预览**
 
 Expected: 375px 和 390px 宽度下无横向滚动，底部导航和安全区正常。
 
@@ -229,7 +229,7 @@ Expected: 全部 PASS。
 -> 查看测试订单
 ```
 
-- [ ] **Step 3: 视觉 QA**
+- [x] **Step 3: 视觉 QA**
 
 在 390 × 844 视口截图，将实现图与 `docs/superpowers/specs/assets/wechat-service-desk-home.png` 并排检查；修正布局、字号、留白、边框、图标和底部安全区差异。
 
