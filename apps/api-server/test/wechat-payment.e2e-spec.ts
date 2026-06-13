@@ -94,6 +94,8 @@ describe('WeChat payment notification (e2e)', () => {
       'login-throttle-test-secret-not-for-production',
     TRUST_PROXY_CIDRS: 'loopback',
     UPSTREAM_BASE_URL: 'http://127.0.0.1:4010/v1',
+  } as const;
+  const environmentOverrides = {
     PAYMENT_DRIVER: 'wechat',
     WECHAT_APP_ID: 'wx-test-app',
     WECHAT_PAY_MCH_ID: '1900000001',
@@ -110,6 +112,10 @@ describe('WeChat payment notification (e2e)', () => {
     writeFileSync(merchantPrivateKeyPath, privateKeyPem, 'utf8');
     writeFileSync(platformCertPath, publicKeyPem, 'utf8');
     for (const [key, value] of Object.entries(environmentDefaults)) {
+      originalEnvironment.set(key, process.env[key]);
+      process.env[key] ??= value;
+    }
+    for (const [key, value] of Object.entries(environmentOverrides)) {
       originalEnvironment.set(key, process.env[key]);
       process.env[key] = value;
     }
