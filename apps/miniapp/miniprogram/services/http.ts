@@ -150,10 +150,23 @@ function login(): Promise<string> {
           return;
         }
 
-        resolve(result.code);
+        resolve(resolveLoginCode(result.code));
       },
     });
   });
+}
+
+function resolveLoginCode(code: string): string {
+  const accountInfo = wx.getAccountInfoSync();
+  if (accountInfo.miniProgram.envVersion !== 'develop') {
+    return code;
+  }
+
+  const appId = accountInfo.miniProgram.appId.trim();
+  const testUserId = /^[A-Za-z0-9_-]{1,128}$/.test(appId)
+    ? appId
+    : 'local-miniapp';
+  return `test:${testUserId}`;
 }
 
 async function refreshAccessToken(baseUrl: string): Promise<void> {
