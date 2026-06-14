@@ -104,3 +104,18 @@ pnpm --filter api-server test:e2e
 - 项目备注：真实 AppID 本地页面验收通过：首页、服务、控制台、我的；本地 API 联调无红色错误。
 - 当前限制：`API_BASE_URLS.trial` 仍未配置 HTTPS 体验 API 域名，真机扫码体验版无法完整访问本机 `http://127.0.0.1:3000`。
 - 下一步：准备 HTTPS 体验环境 API 域名，并在微信公众平台加入 request 合法域名后重新上传体验版。
+
+## 2026-06-14 HTTPS 体验版真机验收记录
+
+- 小程序 AppID：`wx5723c60f8a67a5e2`。
+- 开发版本号：`0.1.1dev.20260614`。
+- 体验 API 域名：`https://api-staging.yourtoken.work`。
+- 后端部署：staging API 已部署到服务器，并通过 aaPanel/nginx HTTPS 反向代理。
+- API 验证：`https://api-staging.yourtoken.work/public/models` 返回 `200` 和模型 JSON。
+- 微信公众平台配置：request 合法域名已添加 `https://api-staging.yourtoken.work`。
+- 上传结果：微信开发者工具上传成功，微信公众平台开发版本已设置为体验版。
+- 项目备注：体验版 API 已切换到 `https://api-staging.yourtoken.work`。
+- 验收范围：首页、服务、控制台、我的，以及模型、套餐、API 文档、密钥、用量、订单、隐私、内容安全、客服投诉等页面。
+- 验收结论：真机体验版所有页面均正常。
+- 安全说明：验收记录未包含 AppSecret、微信登录 code、session_key、API Key、数据库密码、微信支付密钥、证书私钥、Cookie、身份证、银行卡或公司机密。
+- 限制：当前仍为体验环境测试数据；正式发布前需要替换真实经营主体、真实客服/投诉入口、生产 API 域名、正式模型供应商配置，并完成微信认证、微信支付和上线审核。
