@@ -91,6 +91,17 @@ describe('TestWechatCodeExchange', () => {
     });
     expect(exchange).toBeInstanceOf(TestWechatCodeExchange);
   });
+
+  it('uses the production exchange outside production when real WeChat credentials are configured and test login is disabled', () => {
+    const exchange = createWechatCodeExchange(
+      'development',
+      'staging-placeholder-app-id',
+      'staging-placeholder-app-secret',
+      false,
+    );
+
+    expect(exchange).toBeInstanceOf(ProductionWechatCodeExchange);
+  });
 });
 
 describe('ProductionWechatCodeExchange', () => {
