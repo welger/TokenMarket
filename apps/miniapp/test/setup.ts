@@ -10,7 +10,11 @@ beforeEach(() => {
     'localhost',
     '127.0.0.1',
   );
-  API_ALLOWED_HOSTS.trial.splice(0);
+  API_ALLOWED_HOSTS.trial.splice(
+    0,
+    API_ALLOWED_HOSTS.trial.length,
+    'api-staging.yourtoken.work',
+  );
   API_ALLOWED_HOSTS.release.splice(0);
   resetWxMock();
 });
