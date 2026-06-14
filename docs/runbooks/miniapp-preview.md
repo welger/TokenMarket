@@ -10,6 +10,7 @@
    - `WECHAT_AUTH_E2E_DATABASE_URL`
    - 其他 `apps/api-server/test/*.e2e-spec.ts` 依赖的本地数据库连接变量
 4. 小程序 `apps/miniapp/project.config.json` 当前使用 `touristappid`，正式体验前需要替换为真实小程序 AppID。
+5. 如果已经拿到真实 AppID，可按 [微信小程序平台测试准备手册](./wechat-platform-test-readiness.md) 先做开发版、体验版、真实登录和体验 API 域名联调。
 
 ## 自动检查
 
