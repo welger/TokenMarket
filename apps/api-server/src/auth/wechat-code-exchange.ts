@@ -102,6 +102,9 @@ export function createWechatCodeExchange(
   if (testLoginEnabled) {
     return new TestWechatCodeExchange();
   }
+  if (appId && appSecret) {
+    return new ProductionWechatCodeExchange(appId, appSecret);
+  }
 
   return new FailClosedWechatCodeExchange();
 }

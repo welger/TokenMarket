@@ -1,0 +1,51 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api-server/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ${API_SERVER_ENV_FILE:-/opt/tokenmarket/secrets/api-server.env}
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: "3000"
+      DATABASE_URL: postgresql://tokenmarket:${POSTGRES_PASSWORD}@postgres:5432/tokenmarket
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tokenmarket
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: tokenmarket
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tokenmarket -d tokenmarket"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  postgres-data:
+  redis-data:
