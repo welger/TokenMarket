@@ -214,6 +214,39 @@ describe('HTTP client', () => {
     });
   });
 
+  test('无 token 请求用户接口时先登录再请求，避免首个 401 噪音', async () => {
+    wxLoginMock.mockImplementation((options) => {
+      options.success?.({ code: 'real-devtools-code', errMsg: 'login:ok' });
+    });
+    wxRequestMock
+      .mockImplementationOnce((options) => {
+        options.success?.(requestSuccess({ accessToken: 'fresh-token' }));
+        return requestTask();
+      })
+      .mockImplementationOnce((options) => {
+        options.success?.(requestSuccess({ remainingUnits: 1000 }));
+        return requestTask();
+      });
+
+    const client = createHttpClient({ baseUrl: BASE_URL });
+    await expect(
+      client.request({ url: '/me/usage/summary' }),
+    ).resolves.toEqual({ remainingUnits: 1000 });
+
+    expect(wxRequestMock).toHaveBeenCalledTimes(2);
+    expect(wxRequestMock.mock.calls[0][0].url).toBe(
+      `${BASE_URL}/auth/wechat/login`,
+    );
+    expect(wxRequestMock.mock.calls[1][0].url).toBe(
+      `${BASE_URL}/me/usage/summary`,
+    );
+    expect(wxRequestMock.mock.calls[1][0].header).toEqual(
+      expect.objectContaining({
+        Authorization: 'Bearer fresh-token',
+      }),
+    );
+  });
+
   test('网络失败使用稳定中文消息且不泄漏原始对象', async () => {
     const privateFailure = requestFailure(
       'request:fail socket secret-internal-detail must-not-leak',
