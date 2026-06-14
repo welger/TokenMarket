@@ -9,7 +9,7 @@
 3. 如果要跑后端 E2E，先配置本地测试库环境变量：
    - `WECHAT_AUTH_E2E_DATABASE_URL`
    - 其他 `apps/api-server/test/*.e2e-spec.ts` 依赖的本地数据库连接变量
-4. 小程序 `apps/miniapp/project.config.json` 当前使用 `touristappid`，正式体验前需要替换为真实小程序 AppID。
+4. 小程序 `apps/miniapp/project.config.json` 已配置真实小程序 AppID。不要把 AppSecret、登录 code、session_key 或 Cookie 写入仓库。
 5. 如果已经拿到真实 AppID，可按 [微信小程序平台测试准备手册](./wechat-platform-test-readiness.md) 先做开发版、体验版、真实登录和体验 API 域名联调。
 
 ## 自动检查
@@ -85,3 +85,13 @@ pnpm --filter api-server test:e2e
 - 390px 截图：`artifacts/miniapp-preview/miniapp-390px-window-20260613-211751.png`。
 - 验收结论：两档宽度首页可渲染，底部 Tab 和安全区正常；`Problems` 为 0。
 - 限制：当前使用 `touristappid`，只能做本地模拟器验收；生成真机预览二维码需要替换为真实小程序 AppID。
+
+## 2026-06-14 真实 AppID 本地页面验收记录
+
+- 小程序 AppID：`wx5723c60f8a67a5e2`。
+- 微信开发者工具：Stable v2.01.2510290。
+- 后端环境：本地 API `http://127.0.0.1:3000`，PostgreSQL 和 Redis 使用本地 Docker 开发容器。
+- 验收范围：首页、服务、控制台、我的四个 Tab。
+- 验收结论：页面可切换，本地测试数据可加载，Console 无红色错误；仅剩微信开发者工具黄色提示。
+- 安全说明：本次未配置 AppSecret、微信支付 API v3 Key、商户私钥或证书正文。
+- 限制：当前仍为本地模拟器验收；上传开发版、生成体验版和真机二维码验收需在微信开发者工具和微信公众平台继续执行。
