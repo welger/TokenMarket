@@ -17,16 +17,14 @@ export const DEVELOP_API_BASE_URL = 'http://127.0.0.1:3000';
 
 export const API_BASE_URLS: ApiBaseUrls = {
   develop: DEVELOP_API_BASE_URL,
-  // 上线前必须配置真实的 HTTPS 体验环境地址。
-  trial: '',
+  trial: 'https://api-staging.yourtoken.work',
   // 上线前必须配置真实的 HTTPS 正式环境地址。
   release: '',
 };
 
 export const API_ALLOWED_HOSTS: ApiAllowedHosts = {
   develop: ['localhost', '127.0.0.1'],
-  // 上线前必须填写体验环境 API 的精确主机名。
-  trial: [],
+  trial: ['api-staging.yourtoken.work'],
   // 上线前必须填写正式环境 API 的精确主机名。
   release: [],
 };

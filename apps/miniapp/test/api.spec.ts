@@ -19,6 +19,14 @@ describe('API 地址配置', () => {
     expect(() => resolveApiBaseUrl()).toThrow('服务地址未配置');
   });
 
+  test('trial 使用体验环境 HTTPS API 地址', () => {
+    setAccountEnvVersion('trial');
+
+    expect(resolveApiBaseUrl()).toBe(
+      'https://api-staging.yourtoken.work',
+    );
+  });
+
   test('trial 和 release 拒绝非 HTTPS 地址', () => {
     setAccountEnvVersion('release');
 
