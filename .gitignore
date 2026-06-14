@@ -8,4 +8,5 @@ node_modules/
 dist/
 coverage/
 *.log
+.DS_Store
 apps/miniapp/project.private.config.json
