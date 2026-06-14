@@ -65,6 +65,11 @@ function readAccessToken(): string | undefined {
   return value.trim();
 }
 
+function requiresUserAccessToken(url: string): boolean {
+  const normalizedUrl = url.trim();
+  return normalizedUrl === '/me' || normalizedUrl.startsWith('/me/');
+}
+
 function clearAccessTokenIfCurrent(expectedAccessToken?: string): void {
   if (
     expectedAccessToken &&
@@ -244,7 +249,15 @@ export function createHttpClient(
       requestOptions: HttpRequestOptions<TData>,
     ): Promise<TResponse> {
       const baseUrl = getBaseUrl();
-      const initialAccessToken = readAccessToken();
+      let initialAccessToken = readAccessToken();
+      if (
+        !initialAccessToken &&
+        requiresUserAccessToken(requestOptions.url)
+      ) {
+        await refreshOnce(baseUrl);
+        initialAccessToken = readAccessToken();
+      }
+
       const firstResponse = await requestOnce<TResponse, TData>(
         baseUrl,
         requestOptions,

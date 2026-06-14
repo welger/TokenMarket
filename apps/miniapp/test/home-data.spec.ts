@@ -8,9 +8,11 @@ import {
 } from '../miniprogram/pages/home/data';
 import {
   requestSuccess,
+  seedStorage,
   wxRequestMock,
   wxSwitchTabMock,
 } from './wx.mock';
+import { ACCESS_TOKEN_STORAGE_KEY } from '../miniprogram/services/http';
 
 function requestTask(): WechatMiniprogram.RequestTask {
   return {} as WechatMiniprogram.RequestTask;
@@ -95,6 +97,7 @@ describe('home dashboard data', () => {
   });
 
   test('loads sections independently and preserves successful data when usage fails', async () => {
+    seedStorage(ACCESS_TOKEN_STORAGE_KEY, 'test-token');
     wxRequestMock.mockImplementation((options) => {
       if (options.url.endsWith('/public/models')) {
         options.success?.(
@@ -154,6 +157,7 @@ describe('home page interactions', () => {
       Record<string, unknown>
     >;
 
+    seedStorage(ACCESS_TOKEN_STORAGE_KEY, 'test-token');
     wxRequestMock.mockImplementation((options) => {
       options.success?.(requestSuccess([], 200));
       return requestTask();

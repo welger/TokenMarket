@@ -13,10 +13,12 @@ import {
 import { createApiKeysPageOptions } from '../miniprogram/pages/api-keys/index';
 import {
   requestSuccess,
+  seedStorage,
   wxRequestMock,
   wxSetClipboardDataMock,
   wxShowModalMock,
 } from './wx.mock';
+import { ACCESS_TOKEN_STORAGE_KEY } from '../miniprogram/services/http';
 
 function requestTask(): WechatMiniprogram.RequestTask {
   return {} as WechatMiniprogram.RequestTask;
@@ -108,6 +110,7 @@ describe('clipboard helper', () => {
 
 describe('api key page interactions', () => {
   test('creates a key and stores plaintext only in one-time state', async () => {
+    seedStorage(ACCESS_TOKEN_STORAGE_KEY, 'test-token');
     const page = createApiKeysPageOptions();
     const setData = jest.fn();
     const context = {
@@ -155,6 +158,7 @@ describe('api key page interactions', () => {
   });
 
   test('disables a key only after user confirmation', async () => {
+    seedStorage(ACCESS_TOKEN_STORAGE_KEY, 'test-token');
     const page = createApiKeysPageOptions();
     const setData = jest.fn();
     const context = {
