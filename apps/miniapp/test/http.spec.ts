@@ -151,9 +151,46 @@ describe('HTTP client', () => {
     expect(wxRequestMock).toHaveBeenCalledTimes(2);
   });
 
-  test('登录 code 只放在请求 body 中', async () => {
+  test('体验版登录 code 只放在请求 body 中', async () => {
+    setAccountEnvVersion('trial');
+    API_ALLOWED_HOSTS.trial.push('api.example.com');
     wxLoginMock.mockImplementation((options) => {
       options.success?.({ code: 'private-login-code', errMsg: 'login:ok' });
+    });
+    wxRequestMock
+      .mockImplementationOnce((options) => {
+        options.success?.(requestSuccess({}, 401));
+        return requestTask();
+      })
+      .mockImplementationOnce((options) => {
+        options.success?.(requestSuccess({ accessToken: 'fresh-token' }));
+        return requestTask();
+      })
+      .mockImplementationOnce((options) => {
+        options.success?.(requestSuccess({ ok: true }));
+        return requestTask();
+      });
+
+    const client = createHttpClient({
+      baseUrl: 'https://api.example.com',
+    });
+    await client.request({ url: '/private' });
+
+    const loginRequest = wxRequestMock.mock.calls[1][0];
+    expect(loginRequest.url).toBe(
+      'https://api.example.com/auth/wechat/login',
+    );
+    expect(loginRequest.url).not.toContain('private-login-code');
+    expect(loginRequest.data).toEqual({ code: 'private-login-code' });
+    expect(JSON.stringify(loginRequest.header)).not.toContain(
+      'private-login-code',
+    );
+    API_ALLOWED_HOSTS.trial.splice(0);
+  });
+
+  test('开发版登录使用本地测试 code 兼容测试登录后端', async () => {
+    wxLoginMock.mockImplementation((options) => {
+      options.success?.({ code: 'real-devtools-code', errMsg: 'login:ok' });
     });
     wxRequestMock
       .mockImplementationOnce((options) => {
@@ -172,13 +209,9 @@ describe('HTTP client', () => {
     const client = createHttpClient({ baseUrl: BASE_URL });
     await client.request({ url: '/private' });
 
-    const loginRequest = wxRequestMock.mock.calls[1][0];
-    expect(loginRequest.url).toBe(`${BASE_URL}/auth/wechat/login`);
-    expect(loginRequest.url).not.toContain('private-login-code');
-    expect(loginRequest.data).toEqual({ code: 'private-login-code' });
-    expect(JSON.stringify(loginRequest.header)).not.toContain(
-      'private-login-code',
-    );
+    expect(wxRequestMock.mock.calls[1][0].data).toEqual({
+      code: 'test:test-miniapp',
+    });
   });
 
   test('网络失败使用稳定中文消息且不泄漏原始对象', async () => {
