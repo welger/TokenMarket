@@ -28,8 +28,8 @@ WECHAT_APP_ID=wx_xxxxxxxxxxxxxxxx
 WECHAT_APP_SECRET=由微信公众平台提供，放密钥系统
 WECHAT_PAY_MCH_ID=商户号
 WECHAT_PAY_SERIAL_NO=商户 API 证书序列号
-WECHAT_PAY_PRIVATE_KEY_PATH=/secure/tokenmarket/wechat-pay/apiclient_key.pem
-WECHAT_PAY_PLATFORM_CERT_PATH=/secure/tokenmarket/wechat-pay/platform_cert.pem
+WECHAT_PAY_PRIVATE_KEY_PATH=/run/secrets/wechat-pay/apiclient_key.pem
+WECHAT_PAY_PLATFORM_CERT_PATH=/run/secrets/wechat-pay/platform_cert.pem
 WECHAT_PAY_API_V3_KEY=32 字符 API v3 Key，放密钥系统
 WECHAT_PAY_NOTIFY_URL=https://api.example.com/payments/wechat/notify
 ```
@@ -38,6 +38,7 @@ WECHAT_PAY_NOTIFY_URL=https://api.example.com/payments/wechat/notify
 
 - `WECHAT_PAY_PRIVATE_KEY_PATH` 指向商户私钥文件路径，不是私钥内容。
 - `WECHAT_PAY_PLATFORM_CERT_PATH` 指向微信支付平台证书或平台公钥文件路径。
+- Docker 部署时，宿主机目录 `/opt/tokenmarket/secrets/wechat-pay/` 会只读挂载到容器内 `/run/secrets/wechat-pay/`，环境变量应填写容器内路径。
 - `WECHAT_PAY_NOTIFY_URL` 必须是公网 HTTPS，且能被微信支付服务器访问。
 - `PAYMENT_DRIVER=wechat` 后，新订单会进入真实微信支付流程；不要在生产使用 `test` 驱动。
 
@@ -47,11 +48,12 @@ WECHAT_PAY_NOTIFY_URL=https://api.example.com/payments/wechat/notify
 
 推荐做法：
 
-1. 在服务器上创建仅服务进程可读的目录，例如 `/secure/tokenmarket/wechat-pay/`。
+1. 在服务器宿主机上创建仅服务进程可读的目录，例如 `/opt/tokenmarket/secrets/wechat-pay/`。
 2. 放入商户私钥文件 `apiclient_key.pem`。
 3. 放入微信支付平台证书或平台公钥文件 `platform_cert.pem`。
 4. 设置文件权限，确保只有运行 API 服务的用户可读。
-5. 在部署系统中把路径写入环境变量。
+5. Docker Compose 会把宿主机目录只读挂载到容器内 `/run/secrets/wechat-pay/`。
+6. 在部署系统中把容器内路径写入环境变量，例如 `/run/secrets/wechat-pay/apiclient_key.pem`。
 
 不要做：
 
