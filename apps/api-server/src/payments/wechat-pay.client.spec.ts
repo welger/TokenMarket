@@ -1,8 +1,10 @@
 import { generateKeyPairSync } from 'node:crypto';
 
+import { Logger } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import {
+  FetchWechatPayTransport,
   WechatPayClient,
   type WechatPayTransport,
 } from './wechat-pay.client.js';
@@ -104,5 +106,50 @@ describe('WechatPayClient', () => {
     ).rejects.toMatchObject({
       code: 'WECHAT_PAY_PREPAY_FAILED',
     });
+  });
+
+  it('logs sanitized WeChat errors when prepay request fails', async () => {
+    const warnSpy = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      json: jest.fn().mockResolvedValue({
+        code: 'PARAM_ERROR',
+        message: 'appid and openid not match',
+      }),
+      ok: false,
+      status: 400,
+    } as unknown as Response);
+
+    try {
+      await expect(
+        new FetchWechatPayTransport().postJson(
+          'https://api.mch.weixin.qq.com/v3/pay/transactions/jsapi',
+          { payer: { openid: 'sensitive-openid' } },
+          { Authorization: 'sensitive-authorization' },
+        ),
+      ).rejects.toMatchObject({
+        code: 'WECHAT_PAY_PREPAY_FAILED',
+      });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        {
+          code: 'PARAM_ERROR',
+          message: 'appid and openid not match',
+          status: 400,
+        },
+        'WeChat Pay prepay request failed',
+      );
+      expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(
+        'sensitive-openid',
+      );
+      expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(
+        'sensitive-authorization',
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+      warnSpy.mockRestore();
+    }
   });
 });
