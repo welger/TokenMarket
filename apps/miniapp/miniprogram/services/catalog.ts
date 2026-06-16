@@ -22,6 +22,7 @@ interface ApiPlan {
   activationMode?: unknown;
   currency?: unknown;
   description?: unknown;
+  id?: unknown;
   inputQuota?: unknown;
   models?: unknown;
   name?: unknown;
@@ -71,6 +72,7 @@ export interface PlanCard {
   activationText: string;
   applicableModelText: string;
   description: string;
+  id: string;
   name: string;
   priceText: string;
   purchaseNotice: string;
@@ -182,6 +184,7 @@ export function mapPlans(plans: ApiPlan[]): PlanCard[] {
         : '购买后立即生效',
     applicableModelText: modelNamesText(plan.models),
     description: text(plan.description, '暂无套餐说明'),
+    id: text(plan.id, ''),
     name: text(plan.name, '未命名套餐'),
     priceText: priceText(plan.priceMinor, plan.currency),
     purchaseNotice: text(plan.purchaseNotice, '购买前请确认套餐说明'),

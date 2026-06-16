@@ -1,1 +1,16 @@
+.plan-card-selected {
+  border-color: #07c160;
+  background: #f3fff7;
+}
 
+.plan-selected-badge {
+  display: inline-block;
+  margin-top: 12rpx;
+  margin-right: 12rpx;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  background: #07c160;
+  color: #fff;
+  font-size: 22rpx;
+  font-weight: 650;
+}

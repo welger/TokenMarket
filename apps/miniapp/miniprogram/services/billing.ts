@@ -188,6 +188,21 @@ export async function loadRefunds(
   return mapRefunds(Array.isArray(refunds) ? refunds : []);
 }
 
+export async function createPlanOrder(
+  planId: string,
+  client: HttpClient = http,
+): Promise<OrderRow> {
+  const order = await client.request<OrderResponse>({
+    method: 'POST',
+    url: '/me/orders',
+    data: {
+      idempotencyKey: createIdempotencyKey(planId),
+      planId,
+    },
+  });
+  return mapOrders([order])[0];
+}
+
 export async function payWechatOrder(
   orderId: string,
   client: HttpClient = http,
@@ -275,6 +290,15 @@ function mapWechatPaymentParams(
     signType: 'RSA',
     timeStamp: response.timeStamp.trim(),
   };
+}
+
+function createIdempotencyKey(planId: string): string {
+  return [
+    'miniapp',
+    planId,
+    Date.now().toString(36),
+    Math.random().toString(36).slice(2, 12),
+  ].join('-');
 }
 
 function requestWechatPayment(
