@@ -26,6 +26,8 @@ import { transitionOrder } from './order-state-machine.js';
 import { TestPaymentDriver } from './test-payment.driver.js';
 
 export const ORDER_CLOCK = Symbol('ORDER_CLOCK');
+const ORDER_NUMBER_PREFIX = 'ord_';
+const ORDER_NUMBER_RANDOM_LENGTH = 28;
 
 export interface CreateOrderInput {
   planId?: unknown;
@@ -54,6 +56,12 @@ export class PaymentAmountMismatchException extends ConflictException {
       message: '支付金额与订单金额不一致',
     });
   }
+}
+
+function createOrderNumber(): string {
+  return `${ORDER_NUMBER_PREFIX}${randomUUID()
+    .replaceAll('-', '')
+    .slice(0, ORDER_NUMBER_RANDOM_LENGTH)}`;
 }
 
 @Injectable()
@@ -131,7 +139,7 @@ export class OrdersService {
 
     return this.prisma.order.create({
       data: {
-        orderNumber: `ord_${randomUUID().replaceAll('-', '')}`,
+        orderNumber: createOrderNumber(),
         userId,
         planId: plan.id,
         amountMinor: plan.priceMinor,
