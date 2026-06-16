@@ -41,6 +41,7 @@ describe('service catalog mapping', () => {
         activationMode: 'IMMEDIATE',
         currency: 'CNY',
         description: '开发测试使用',
+        id: 'plan_develop',
         models: [{ displayName: 'DeepSeek' }],
         name: '开发测试套餐',
         priceMinor: 9900,
@@ -53,6 +54,7 @@ describe('service catalog mapping', () => {
 
     expect(plans[0]).toMatchObject({
       applicableModelText: 'DeepSeek',
+      id: 'plan_develop',
       priceText: '¥99.00',
       purchaseNotice: '测试支付不代表真实付款',
       quotaText: '100 万通用字符',
