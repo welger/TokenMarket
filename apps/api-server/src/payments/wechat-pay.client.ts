@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 
 import { WechatSignatureService } from './wechat-signature.service.js';
 
@@ -49,6 +49,8 @@ export class WechatPayPrepayException extends ConflictException {
 }
 
 export class FetchWechatPayTransport implements WechatPayTransport {
+  private readonly logger = new Logger(FetchWechatPayTransport.name);
+
   async postJson(
     url: string,
     body: Record<string, unknown>,
@@ -61,9 +63,29 @@ export class FetchWechatPayTransport implements WechatPayTransport {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      this.logger.warn({
+        code: this.safeText(payload, 'code'),
+        message: this.safeText(payload, 'message'),
+        status: response.status,
+      }, 'WeChat Pay prepay request failed');
       throw new WechatPayPrepayException();
     }
     return payload;
+  }
+
+  private safeText(
+    payload: unknown,
+    key: 'code' | 'message',
+  ): string | undefined {
+    if (typeof payload !== 'object' || payload === null) {
+      return undefined;
+    }
+    const value = (payload as Record<string, unknown>)[key];
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed.slice(0, 300) : undefined;
   }
 }
 
