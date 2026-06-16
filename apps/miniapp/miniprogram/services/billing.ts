@@ -407,22 +407,11 @@ function formatChinaDateTime(date: Date): {
   dateText: string;
   timeText: string;
 } {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    day: '2-digit',
-    hour: '2-digit',
-    hour12: false,
-    minute: '2-digit',
-    month: '2-digit',
-    timeZone: 'Asia/Shanghai',
-    year: 'numeric',
-  }).formatToParts(date);
-  const values = Object.fromEntries(
-    parts.map((part) => [part.type, part.value]),
-  );
+  const chinaDate = new Date(date.getTime() + 8 * 60 * 60 * 1000);
 
   return {
-    dateText: `${values.year}-${values.month}-${values.day}`,
-    timeText: `${values.hour}:${values.minute}`,
+    dateText: `${chinaDate.getUTCFullYear()}-${pad(chinaDate.getUTCMonth() + 1)}-${pad(chinaDate.getUTCDate())}`,
+    timeText: `${pad(chinaDate.getUTCHours())}:${pad(chinaDate.getUTCMinutes())}`,
   };
 }
 

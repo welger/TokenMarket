@@ -123,6 +123,35 @@ describe('billing and usage mapping', () => {
     expect(rows[0].createdAtText).toBe('2026-06-17');
   });
 
+  test('maps order creation dates without Intl support', () => {
+    const originalIntl = globalThis.Intl;
+    Object.defineProperty(globalThis, 'Intl', {
+      configurable: true,
+      value: undefined,
+    });
+
+    try {
+      const rows = mapOrders([
+        {
+          amountMinor: 100,
+          createdAt: '2026-06-16T18:10:00.000Z',
+          currency: 'CNY',
+          id: 'order_1',
+          orderNumber: 'ord_1',
+          paymentDriver: 'WECHAT',
+          status: 'FULFILLED',
+        },
+      ]);
+
+      expect(rows[0].createdAtText).toBe('2026-06-17');
+    } finally {
+      Object.defineProperty(globalThis, 'Intl', {
+        configurable: true,
+        value: originalIntl,
+      });
+    }
+  });
+
   test('requests WeChat payment params and invokes wx.requestPayment', async () => {
     const request = jest.fn().mockResolvedValue({
       nonceStr: 'nonce-1',
