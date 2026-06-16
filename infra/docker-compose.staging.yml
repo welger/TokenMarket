@@ -13,6 +13,8 @@ services:
       REDIS_URL: redis://redis:6379
     ports:
       - "127.0.0.1:3000:3000"
+    volumes:
+      - /opt/tokenmarket/secrets/wechat-pay:/run/secrets/wechat-pay:ro
     depends_on:
       postgres:
         condition: service_healthy
