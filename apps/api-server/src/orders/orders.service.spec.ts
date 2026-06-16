@@ -143,6 +143,12 @@ describe('OrdersService', () => {
       }),
       include: { plan: true },
     });
+    const createOrderInput = harness.prisma.order.create.mock
+      .calls[0][0] as { data: { orderNumber: string } };
+    expect(createOrderInput.data.orderNumber).toMatch(
+      /^ord_[0-9a-f]{28}$/,
+    );
+    expect(createOrderInput.data.orderNumber).toHaveLength(32);
   });
 
   it('creates WeChat orders when PAYMENT_DRIVER=wechat', async () => {
