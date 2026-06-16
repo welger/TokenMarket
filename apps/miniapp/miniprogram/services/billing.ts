@@ -388,7 +388,7 @@ function dateText(value: unknown): string {
   if (Number.isNaN(date.getTime())) {
     return '时间待确认';
   }
-  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+  return formatChinaDateTime(date).dateText;
 }
 
 function dateTimeText(value: unknown): string {
@@ -399,7 +399,31 @@ function dateTimeText(value: unknown): string {
   if (Number.isNaN(date.getTime())) {
     return '时间待确认';
   }
-  return `${dateText(date)} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+  const formatted = formatChinaDateTime(date);
+  return `${formatted.dateText} ${formatted.timeText}`;
+}
+
+function formatChinaDateTime(date: Date): {
+  dateText: string;
+  timeText: string;
+} {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+    minute: '2-digit',
+    month: '2-digit',
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+  }).formatToParts(date);
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
+
+  return {
+    dateText: `${values.year}-${values.month}-${values.day}`,
+    timeText: `${values.hour}:${values.minute}`,
+  };
 }
 
 function periodText(startValue: unknown, endValue: unknown): string {

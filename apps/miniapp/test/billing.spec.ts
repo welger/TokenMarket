@@ -63,7 +63,7 @@ describe('billing and usage mapping', () => {
     expect(rows[0]).toEqual({
       chargedUnits: '8 字符',
       charactersText: '输入 5 / 输出 3',
-      createdAtText: '2026-06-13 08:30',
+      createdAtText: '2026-06-13 16:30',
       durationText: '230 ms',
       httpStatusText: '200',
       modelName: 'qwen-turbo',
@@ -105,6 +105,22 @@ describe('billing and usage mapping', () => {
       paymentText: '微信支付',
       statusText: '待支付',
     });
+  });
+
+  test('maps order creation dates in the miniapp local timezone', () => {
+    const rows = mapOrders([
+      {
+        amountMinor: 100,
+        createdAt: '2026-06-16T18:10:00.000Z',
+        currency: 'CNY',
+        id: 'order_1',
+        orderNumber: 'ord_1',
+        paymentDriver: 'WECHAT',
+        status: 'FULFILLED',
+      },
+    ]);
+
+    expect(rows[0].createdAtText).toBe('2026-06-17');
   });
 
   test('requests WeChat payment params and invokes wx.requestPayment', async () => {
