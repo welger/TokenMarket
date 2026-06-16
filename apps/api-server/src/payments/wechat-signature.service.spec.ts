@@ -56,6 +56,9 @@ describe('WechatSignatureService', () => {
     expect(header).toContain('nonce_str="nonce-123"');
     expect(header).toContain('timestamp="1710000000"');
     expect(header).toContain('signature="');
+    expect(header).toMatch(
+      /^WECHATPAY2-SHA256-RSA2048 mchid="1900000001",nonce_str="nonce-123",signature="[^"]+",timestamp="1710000000",serial_no="serial-123"$/,
+    );
   });
 
   it('verifies a notification signature over timestamp, nonce, and body', () => {

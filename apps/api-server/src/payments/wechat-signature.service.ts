@@ -54,14 +54,15 @@ export class WechatSignatureService {
     );
     const signature = this.sign(message, input.merchantPrivateKeyPem);
 
-    return [
-      'WECHATPAY2-SHA256-RSA2048',
+    const authorizationParameters = [
       `mchid="${input.merchantId}"`,
       `nonce_str="${input.nonce}"`,
       `signature="${signature}"`,
       `timestamp="${input.timestamp}"`,
       `serial_no="${input.merchantSerialNo}"`,
-    ].join(' ');
+    ].join(',');
+
+    return `WECHATPAY2-SHA256-RSA2048 ${authorizationParameters}`;
   }
 
   sign(message: string, privateKeyPem: string): string {
